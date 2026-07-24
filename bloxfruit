@@ -606,81 +606,70 @@ createPlayerEspToggle(pGeneral)
 
 
 
-
 -- ==========================================
--- ⚡ ฟังก์ชันระบบดึงผลไม้ + สแปมรีโมทเจ้าของแรก (ไม่แลค)
+-- ⚡ ระบบเทเลพอร์ตผลไม้มาหาตัวทันทีในเสี้ยววิ (กันคนตัดหน้า)
 -- ==========================================
-
-local function createAutoTeleportFruitToggle(targetPage)
-    local toggled = false
-    local fruitConnection = nil
+local function createInstantPullFruitToggle(targetPage)
+    SettingsData.PullFruit = SettingsData.PullFruit or false
+    local toggled = SettingsData.PullFruit
+    local pullConnection = nil
 
     local btn = Instance.new("TextButton")
     btn.Parent = targetPage
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
     btn.Size = UDim2.new(1, -10, 0, 38)
     btn.Font = Enum.Font.GothamBold
-    btn.Text = "⚡ ดึงผล + สแปมรีโมทเจ้าของแรก [ OFF ]"
-    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.Text = "⚡ เทเลพอร์ตผลไม้เข้าตัวทันที [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
     btn.TextSize = 13
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    btn.MouseButton1Click:Connect(function()
-        toggled = not toggled
-        if toggled then
-            btn.Text = "⚡ ดึงผล + สแปมรีโมทเจ้าของแรก [ ON ]"
-            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
-            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
-
-            fruitConnection = task.spawn(function()
+    local function runInstantPullTask(state)
+        if state then
+            pullConnection = task.spawn(function()
                 local workspace = game:GetService("Workspace")
                 local replicatedStorage = game:GetService("ReplicatedStorage")
                 
                 while toggled do
-                    task.wait(0.2) -- หน่วงเวลาเล็กน้อยเพื่อไม่ให้มือถือค้าง
+                    task.wait(0.1) -- เช็คไวแบบเรียลไทม์
                     
                     pcall(function()
                         local character = localPlayer.Character
                         if character and character:FindFirstChild("HumanoidRootPart") then
                             local hrp = character.HumanoidRootPart
                             
-                            -- ค้นหาผลไม้ที่ตกอยู่ใน Workspace
+                            -- สแกนหาผลไม้ใน Workspace ทั้งหมด
                             for _, v in pairs(workspace:GetChildren()) do
                                 if not toggled then break end
                                 
                                 if v.Name:match("Fruit") or v:IsA("Tool") then
-                                    local targetPart = v:FindFirstChild("Handle") or v.PrimaryPart or (v:IsA("BasePart") and v)
-                                    if targetPart then
-                                        -- 1. วาร์ปไปชิดตำแหน่งผลไม้ทันที
-                                        hrp.CFrame = targetPart.CFrame + Vector3.new(0, 2, 0)
-                                        
-                                        -- 2. สแปม TouchInterest เพื่อยืนยันการแตะเก็บเป็นคนแรก
-                                        firetouchinterest(hrp, targetPart, 0)
-                                        firetouchinterest(hrp, targetPart, 1)
-                                        
-                                        -- 3. สแปมรีโมทหลักของเกมเพื่อบังคับเบิกผลเข้ากระเป๋า (ป้องกันผลไม่เข้าตัว)
+                                    local handle = v:FindFirstChild("Handle") or v.PrimaryPart or (v:IsA("BasePart") and v)
+                                    if handle then
                                         pcall(function()
+                                            -- 1. วาร์ปผลไม้มาแปะที่ตัวเราทันทีในเสี้ยววินาที (Instant)
+                                            handle.CFrame = hrp.CFrame + Vector3.new(0, 1, 0)
+                                            
+                                            -- 2. สั่งยิงรีโมทเก็บเข้าคลังถาวรทันทีแบบรัวๆ
                                             replicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", v.Name, v)
                                         end)
-                                        
-                                        task.wait(0.1)
                                     end
                                 end
                             end
 
-                            -- เช็คโฟลเดอร์ Collectibles สำรอง
+                            -- เช็คเผื่ออยู่ในโฟลเดอร์ Collectibles ของแมพ
                             local collectibles = workspace:FindFirstChild("Collectibles")
                             if collectibles then
                                 for _, v in pairs(collectibles:GetChildren()) do
                                     if not toggled then break end
-                                    if v:IsA("BasePart") then
-                                        hrp.CFrame = v.CFrame + Vector3.new(0, 2, 0)
-                                        firetouchinterest(hrp, v, 0)
-                                        firetouchinterest(hrp, v, 1)
-                                        task.wait(0.1)
+                                    local part = v:IsA("Model") and (v.PrimaryPart or v:FindFirstChildOfClass("BasePart")) or (v:IsA("BasePart") and v)
+                                    if part then
+                                        pcall(function()
+                                            part.CFrame = hrp.CFrame + Vector3.new(0, 1, 0)
+                                            replicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", v.Name, v)
+                                        end)
                                     end
                                 end
                             end
@@ -689,20 +678,38 @@ local function createAutoTeleportFruitToggle(targetPage)
                 end
             end)
         else
-            btn.Text = "⚡ ดึงผล + สแปมรีโมทเจ้าของแรก [ OFF ]"
+            if pullConnection then
+                task.cancel(pullConnection)
+                pullConnection = nil
+            end
+        end
+    end
+
+    if toggled then
+        runInstantPullTask(true)
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        SettingsData.PullFruit = toggled
+        SaveConfig()
+
+        if toggled then
+            btn.Text = "⚡ เทเลพอร์ตผลไม้เข้าตัวทันที [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+            runInstantPullTask(true)
+        else
+            btn.Text = "⚡ เทเลพอร์ตผลไม้เข้าตัวทันที [ OFF ]"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            toggled = false
-            
-            if fruitConnection then
-                task.cancel(fruitConnection)
-            end
+            runInstantPullTask(false)
         end
     end)
 end
 
--- 📌 คำสั่งเรียกใช้งาน (แปะไว้ให้ปุ่มโผล่ในหน้า "ผลไม้")
-createAutoTeleportFruitToggle(pFruit)
+-- 📌 คำสั่งเรียกใช้งานในหน้า "ผลไม้"
+createInstantPullFruitToggle(pFruit)
 
 
 
