@@ -1,15 +1,23 @@
 -- ==========================================
--- 💾 ระบบจำค่าสถานะ (ใช้ getgenv แทนการเขียนไฟล์ ป้องกันโค้ดพัง)
+-- 💾 ระบบจำค่าสถานะ (ประกาศตัวแปรสำคัญครบถ้วนทุกฟังก์ชัน ป้องกันปุ่มกดไม่ติด)
 -- ==========================================
 getgenv().MyScriptSettings = getgenv().MyScriptSettings or {
     AutoCollectFruit = false,
     MonsterEsp = false,
-    ESPPlayer = false,
-    PullFruit = false,
+    ESPPlayer = false,     
+    PlayerEsp = false,     
+    PullFruit = false,     
     FastAttack = false,
+    ElectroTeleport = false,
+    WaterTeleport = false,
+    FruitEsp = false,      
 }
 
-local SettingsData = getgenv().MyScriptSettings
+-- ตัวแปรระบบพื้นฐานและ UI
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:WaitForChild("PlayerGui")
 
 
 
