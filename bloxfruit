@@ -13,6 +13,13 @@ getgenv().MyScriptSettings = getgenv().MyScriptSettings or {
     FruitEsp = false,      
 }
 
+local SettingsData = getgenv().MyScriptSettings
+local function SaveConfig()
+    -- ฟังก์ชันบันทึกค่า (ปล่อยว่างไว้หรือใส่ระบบเซฟตามต้องการเพื่อกัน Error)
+end
+
+
+
 -- ตัวแปรระบบพื้นฐานและ UI
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
