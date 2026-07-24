@@ -424,3 +424,105 @@ end
 
 -- 📌 คำสั่งเรียกใช้งาน (แปะไว้ให้ปุ่มโผล่ในหน้า "ทั่วไป")
 createMonsterEspToggle(pGeneral)
+
+
+
+
+-- ==========================================
+-- 👥 ฟังก์ชันระบบ ESP ผู้เล่น (เช็คทั้งแมพ: โจรสรัด = สีฟ้า, มารีน = สีเขียว)
+-- ==========================================
+
+local function createPlayerEspToggle(targetPage)
+    local toggled = false
+    local espConnection = nil
+    local activeHighlights = {}
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = targetPage
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = "👥 ESP ผู้เล่นทั้งหมด [ OFF ]"
+    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 13
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    local function removeAllHighlights()
+        for _, highlight in pairs(activeHighlights) do
+            if highlight then
+                highlight:Destroy()
+            end
+        end
+        activeHighlights = {}
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        if toggled then
+            btn.Text = "👥 ESP ผู้เล่นทั้งหมด [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+
+            -- เริ่มทำงานระบบ ESP ผู้เล่นทั่วทั้งแมพ
+            espConnection = task.spawn(function()
+                while toggled do
+                    task.wait(0.5)
+                    pcall(function()
+                        local players = game:GetService("Players")
+                        local localPlayer = players.LocalPlayer
+
+                        for _, player in pairs(players:GetPlayers()) do
+                            if player ~= localPlayer and player.Character then
+                                local character = player.Character
+                                local humanoid = character:FindFirstChild("Humanoid")
+
+                                if humanoid and humanoid.Health > 0 then
+                                    local team = player.Team
+                                    local teamName = team and team.Name or ""
+                                    
+                                    -- เช็คและกำหนดสีตามฝ่าย (มารีน = สีเขียว, โจรสรัด/อื่นๆ = สีฟ้า)
+                                    local espColor = Color3.fromRGB(0, 170, 255) -- ค่าเริ่มต้นสีฟ้า (โจรสรัด)
+                                    if teamName == "Marine" then
+                                        espColor = Color3.fromRGB(0, 255, 100) -- สีเขียวสำหรับมารีน
+                                    end
+
+                                    -- สร้างหรืออัปเดต Highlight กรอบเรืองแสง
+                                    local highlight = character:FindFirstChild("PlayerHighlight")
+                                    if not highlight then
+                                        highlight = Instance.new("Highlight")
+                                        highlight.Name = "PlayerHighlight"
+                                        highlight.Adornee = character
+                                        highlight.Parent = character
+                                        table.insert(activeHighlights, highlight)
+                                    end
+
+                                    -- อัปเดตสีตามฝ่ายปัจจุบัน
+                                    highlight.FillColor = espColor
+                                    highlight.FillTransparency = 0.75 -- ความจางด้านใน
+                                    highlight.OutlineColor = espColor
+                                    highlight.OutlineTransparency = 0  -- กรอบชัดเจน
+                                end
+                            end
+                        end
+                    end)
+                end
+            end)
+        else
+            btn.Text = "👥 ESP ผู้เล่นทั้งหมด [ OFF ]"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            toggled = false
+
+            if espConnection then
+                task.cancel(espConnection)
+            end
+            removeAllHighlights()
+        end
+    end)
+end
+
+-- 📌 คำสั่งเรียกใช้งาน (แปะไว้ให้ปุ่มไปโผล่ในหน้า "ทั่วไป")
+createPlayerEspToggle(pGeneral)
