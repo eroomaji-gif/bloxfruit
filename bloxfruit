@@ -514,110 +514,130 @@ createMonsterEspToggle(pGeneral)
 
 
 -- ==========================================
--- 👥 ฟังก์ชันระบบ ESP ผู้เล่น (มารีน = สีฟ้า, โจร = กรอบเขียว/ใสในสีส้ม)
+-- 👥 ระบบ ESP Player ทะลุแมพ + แสดงชื่อสีขาวเด่นชัด (กวาดทั้งเซิร์ฟเวอร์)
 -- ==========================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local localPlayer = Players.LocalPlayer
 
-local function createPlayerEspToggle(targetPage)
-    local toggled = false
-    local espConnection = nil
-    local activeHighlights = {}
+-- ตารางเก็บสถานะ ESP Player (ใช้ร่วมกับ Config ได้)
+SettingsData = SettingsData or {}
+SettingsData.ESPPlayer = SettingsData.ESPPlayer or false
+local espEnabled = SettingsData.ESPPlayer
+
+-- ฟังก์ชันสร้างป้ายชื่อและกล่อง ESP ให้ผู้เล่นแต่ละคน
+local function setupPlayerESP(player)
+    if player == localPlayer then return end
+
+    local function createVisuals(character)
+        if not character then return end
+        local head = character:WaitForChild("Head", 5)
+        if not head then return end
+
+        -- เช็คดูว่ามีป้ายชื่ออยู่แล้วหรือยัง ถ้ามีให้ลบอันเก่าทิ้งก่อนกันบั๊กซ้ำซ้อน
+        if head:FindFirstChild("CustomESPName") then
+            head.CustomESPName:Destroy()
+        end
+
+        -- 1. สร้างป้ายชื่อสีขาวลอยเหนือหัว (มองเห็นทะลุกำแพง)
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "CustomESPName"
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 2.5, 0) -- ลอยอยู่เหนือหัวนิดหน่อย
+        billboard.AlwaysOnTop = true -- 👈 สำคัญมาก! ทำให้มองทะลุกำแพงและสิ่งกีดขวางได้
+        billboard.Parent = head
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Parent = billboard
+        textLabel.BackgroundTransparency = 1
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.Text = player.Name -- แสดงชื่อผู้เล่น
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- 🤍 สีขาวเด่นชัด ไม่ซ้ำสีเหลืองของผลไม้
+        textLabel.TextSize = 14
+        textLabel.TextStrokeTransparency = 0 -- ใส่ขอบดำให้ตัวหนังสือคมชัด มองเห็นง่ายบนทุกพื้นหลัง
+        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    end
+
+    -- ถ้าตัวละครเกิดอยู่แล้ว ให้ใส่ ESP ให้ทันที
+    if player.Character then
+        createVisuals(player.Character)
+    end
+
+    -- ดักจับกรณีที่ผู้เล่นตายแล้วเกิดใหม่
+    player.CharacterAdded:Connect(function(newCharacter)
+        createVisuals(newCharacter)
+    end)
+end
+
+-- ฟังก์ชันเปิด/ปิดระบบ ESP Player ทั้งหมด
+local function runESPPlayerSystem(state)
+    if state then
+        -- วนลูปเช็คผู้เล่นที่มีอยู่แล้วในเซิร์ฟเวอร์
+        for _, player in ipairs(Players:GetPlayers()) do
+            setupPlayerESP(player)
+        end
+        -- ดักจับผู้เล่นใหม่ที่เพิ่งเข้าเกมมา
+        Players.PlayerAdded:Connect(setupPlayerESP)
+    else
+        -- ถ้าปิด ให้ลบป้ายชื่อทั้งหมดทิ้ง
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character and player.Character:FindFirstChild("Head") then
+                local esp = player.Character.Head:FindFirstChild("CustomESPName")
+                if esp then esp:Destroy() end
+            end
+        end
+    end
+end
+
+-- ==========================================
+-- 🎛️ สร้างปุ่มกดเปิด-ปิด ESP Player ใน UI ของคุณ
+-- ==========================================
+local function createESPPlayerToggle(targetPage)
+    local toggled = SettingsData.ESPPlayer
 
     local btn = Instance.new("TextButton")
     btn.Parent = targetPage
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
     btn.Size = UDim2.new(1, -10, 0, 38)
     btn.Font = Enum.Font.GothamBold
-    btn.Text = "👥 ESP ผู้เล่นทั้งหมด [ OFF ]"
-    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.Text = "👥 ESP Player ทะลุกำแพง [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
     btn.TextSize = 13
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    local function removeAllHighlights()
-        for _, highlight in pairs(activeHighlights) do
-            if highlight then
-                highlight:Destroy()
-            end
-        end
-        activeHighlights = {}
+    -- รันสถานะเริ่มต้นตาม Config ที่เซฟไว้
+    if toggled then
+        runESPPlayerSystem(true)
     end
 
     btn.MouseButton1Click:Connect(function()
         toggled = not toggled
+        SettingsData.ESPPlayer = toggled
+        
+        -- ถ้ามีฟังก์ชัน SaveConfig จากระบบก่อนหน้านี้ มันจะบันทึกออโต้ด้วย
+        if SaveConfig then SaveConfig() end
+
         if toggled then
-            btn.Text = "👥 ESP ผู้เล่นทั้งหมด [ ON ]"
+            btn.Text = "👥 ESP Player ทะลุกำแพง [ ON ]"
             btn.TextColor3 = Color3.fromRGB(100, 255, 100)
             btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
-
-            -- เริ่มทำงานระบบ ESP ผู้เล่นทั่วทั้งแมพ
-            espConnection = task.spawn(function()
-                while toggled do
-                    task.wait(0.5)
-                    pcall(function()
-                        local players = game:GetService("Players")
-                        local localPlayer = players.LocalPlayer
-
-                        for _, player in pairs(players:GetPlayers()) do
-                            if player ~= localPlayer and player.Character then
-                                local character = player.Character
-                                local humanoid = character:FindFirstChild("Humanoid")
-
-                                if humanoid and humanoid.Health > 0 then
-                                    local team = player.Team
-                                    local teamName = team and team.Name or ""
-                                    
-                                    -- กำหนดสีตามเงื่อนไขใหม่
-                                    local fillColor, outlineColor
-                                    
-                                    if teamName == "Marine" then
-                                        -- มารีน = สีฟ้าทั้งหมด
-                                        fillColor = Color3.fromRGB(0, 170, 255)
-                                        outlineColor = Color3.fromRGB(0, 170, 255)
-                                    else
-                                        -- โจรสรัด / อื่นๆ = ด้านในสีส้ม, กรอบเส้นสีเขียว
-                                        fillColor = Color3.fromRGB(255, 128, 0)
-                                        outlineColor = Color3.fromRGB(0, 255, 0)
-                                    end
-
-                                    -- สร้างหรืออัปเดต Highlight กรอบเรืองแสง
-                                    local highlight = character:FindFirstChild("PlayerHighlight")
-                                    if not highlight then
-                                        highlight = Instance.new("Highlight")
-                                        highlight.Name = "PlayerHighlight"
-                                        highlight.Adornee = character
-                                        highlight.Parent = character
-                                        table.insert(activeHighlights, highlight)
-                                    end
-
-                                    -- อัปเดตสีตามที่ตั้งค่าไว้
-                                    highlight.FillColor = fillColor
-                                    highlight.FillTransparency = 0.75 -- ความจางด้านใน
-                                    highlight.OutlineColor = outlineColor
-                                    highlight.OutlineTransparency = 0  -- กรอบชัดเจน
-                                end
-                            end
-                        end
-                    end)
-                end
-            end)
+            runESPPlayerSystem(true)
         else
-            btn.Text = "👥 ESP ผู้เล่นทั้งหมด [ OFF ]"
+            btn.Text = "👥 ESP Player ทะลุกำแพง [ OFF ]"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            toggled = false
-
-            if espConnection then
-                task.cancel(espConnection)
-            end
-            removeAllHighlights()
+            runESPPlayerSystem(false)
         end
     end)
 end
 
--- 📌 คำสั่งเรียกใช้งาน (แปะไว้ให้ปุ่มไปโผล่ในหน้า "ทั่วไป")
-createPlayerEspToggle(pGeneral)
+-- 📌 คำสั่งเรียกใช้งาน (เปลี่ยน pFruit เป็นหน้าต่างของคุณ)
+createMonsterEspToggle(pGeneral)
 
 
 
