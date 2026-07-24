@@ -1,0 +1,213 @@
+-- ==========================================
+-- 📌 [ระบบป้องกัน] รายชื่อเจ้าของสคริปต์ (ห้ามยุ่งเด็ดขาด)
+-- ==========================================
+local ProtectedOwner = "Onsenb47162"
+
+local function isOwner(player)
+    if not player then return false end
+    return player.Name == ProtectedOwner or player.DisplayName == ProtectedOwner
+end
+
+-- ==========================================
+-- 📌 โครงสร้าง UI แบบใหม่ (เปิดมาโชว์หน้าแรกทันที)
+-- ==========================================
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:WaitForChild("PlayerGui")
+
+-- ลบ UI เก่าทิ้งก่อน (ถ้ามี)
+local oldGui = playerGui:FindFirstChild("FlexibleMenuGui")
+if oldGui then
+    oldGui:Destroy()
+end
+
+-- สร้าง ScreenGui หลัก
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FlexibleMenuGui"
+ScreenGui.Parent = playerGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 9999
+
+-- 1. ปุ่มเปิด/ปิดหน้าต่างเมนู (สี่เหลี่ยมจัตุรัสเล็กๆ พร้อมรูปภาพ)
+local ToggleButton = Instance.new("ImageButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ToggleButton.BackgroundTransparency = 0.2
+ToggleButton.Position = UDim2.new(0.05, 0, 0.1, 0)
+ToggleButton.Size = UDim2.new(0, 45, 0, 45)
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+ToggleButton.Image = "rbxassetid://75925823414835"
+
+-- บังคับโหลดภาพ (Force Preload)
+task.spawn(function()
+    pcall(function()
+        game:GetService("ContentProvider"):PreloadAsync({ToggleButton})
+    end)
+end)
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 8)
+ToggleCorner.Parent = ToggleButton
+
+-- ==========================================
+-- 2. หน้าต่างหลัก (ตั้งค่าให้ Visible = true ตั้งแต่เริ่มรัน)
+-- ==========================================
+local MainFrame = Instance.new("ImageLabel")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+MainFrame.BackgroundTransparency = 1 
+MainFrame.Position = UDim2.new(0.05, 0, 0.18, 0)
+MainFrame.Size = UDim2.new(0, 550, 0, 450)
+MainFrame.Visible = true -- 🟢 เปิดขึ้นมาโชว์ทันทีเมื่อรันสคริปต์
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Image = "rbxassetid://75925823414835"
+MainFrame.ImageTransparency = 0.45
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- แถบหัวข้อด้านบน (Title Bar)
+local TitleBar = Instance.new("TextLabel")
+TitleBar.Name = "TitleBar"
+TitleBar.Parent = MainFrame
+TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.Font = Enum.Font.GothamBold
+TitleBar.Text = "  🤪 KTO CRUB "
+TitleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleBar.TextSize = 15
+TitleBar.TextXAlignment = Enum.TextXAlignment.Left
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = TitleBar
+
+-- ปุ่มปิดหน้าต่าง (กากบาท X)
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = TitleBar
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseButton.Position = UDim2.new(1, -45, 0.5, -15)
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 14
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseButton
+
+CloseButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- ==========================================
+-- 📂 3. ระบบแบ่งสัดส่วน (ซ้าย: หมวดหมู่เยอะๆ | ขวา: พื้นที่โล่ง)
+-- ==========================================
+
+local SidebarFrame = Instance.new("ScrollingFrame")
+SidebarFrame.Name = "SidebarFrame"
+SidebarFrame.Parent = MainFrame
+SidebarFrame.BackgroundTransparency = 1
+SidebarFrame.Position = UDim2.new(0, 10, 0, 50)
+SidebarFrame.Size = UDim2.new(0, 140, 1, -60)
+SidebarFrame.CanvasSize = UDim2.new(0, 0, 0, 500)
+SidebarFrame.ScrollBarThickness = 4
+
+local SidebarLayout = Instance.new("UIListLayout")
+SidebarLayout.Parent = SidebarFrame
+SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarLayout.Padding = UDim.new(0, 8)
+
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Parent = MainFrame
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Position = UDim2.new(0, 160, 0, 50)
+ContentFrame.Size = UDim2.new(1, -170, 1, -60)
+
+local Pages = {}
+
+local function createPage(name)
+    local page = Instance.new("ScrollingFrame")
+    page.Name = name .. "Page"
+    page.Parent = ContentFrame
+    page.BackgroundTransparency = 1
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.CanvasSize = UDim2.new(0, 0, 0, 500)
+    page.ScrollBarThickness = 4
+    page.Visible = false
+
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = page
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+
+    Pages[name] = page
+    return page
+end
+
+-- สร้างหน้าต่างสำหรับหมวดหมู่ทั้งหมด
+local pHome = createPage("Home")
+local pServer = createPage("ServerStatus")
+local pGeneral = createPage("General")
+local pFarm = createPage("Farm")
+local pFruit = createPage("Fruit")
+local pQuest = createPage("Quest")
+local pFindItem = createPage("FindItem")
+local pSeaEvent = createPage("SeaEvent")
+local pRace = createPage("Race")
+local pShop = createPage("Shop")
+local pPVP = createPage("PVP")
+local pSettings = createPage("Settings")
+
+-- 🟢 ล็อกให้หน้าแรก (Home) แสดงผลเป็นค่าเริ่มต้นทันทีที่รัน
+pHome.Visible = true
+
+-- ฟังก์ชันสร้างปุ่มเมนูด้านซ้าย
+local function createSidebarButton(text, targetPage)
+    local btn = Instance.new("TextButton")
+    btn.Parent = SidebarFrame
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.Size = UDim2.new(1, -10, 0, 32)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 12
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        for _, p in pairs(Pages) do
+            p.Visible = false
+        end
+        targetPage.Visible = true
+    end)
+end
+
+-- เพิ่มรายชื่อหมวดหมู่ทั้งหมดลงในแถบซ้าย
+createSidebarButton("หน้าแรก", pHome)
+createSidebarButton("สถานะเซิฟเวอร์", pServer)
+createSidebarButton("ทั่วไป", pGeneral)
+createSidebarButton("ฟาม", pFarm)
+createSidebarButton("ผลไม้", pFruit)
+createSidebarButton("เควส", pQuest)
+createSidebarButton("หาของ", pFindItem)
+createSidebarButton("อีเว้นทะเล", pSeaEvent)
+createSidebarButton("เผ่า", pRace)
+createSidebarButton("ร้านค้า", pShop)
+createSidebarButton("PVP", pPVP)
+createSidebarButton("ตั้งค่า", pSettings)
