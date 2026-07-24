@@ -242,3 +242,60 @@ end
 
 -- นำปุ่มทั้งหมดใส่ไว้ในหน้า "ผลไม้" (pFruit)
 createGachaButton(pFruit)                  -- ปุ่มสุ่มผลไม้ทีละครั้ง
+
+
+
+-- 1. ฟังก์ชันสร้างปุ่มสลับเปิด-ปิด (Toggle) สำหรับออโต้เก็บผล
+local function createAutoCollectToggle(targetPage)
+    local toggled = false
+    local connection = nil
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = targetPage
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = "🧺 ออโต้เก็บผลเข้ากระเป๋า [ OFF ]"
+    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 13
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        if toggled then
+            btn.Text = "🧺 ออโต้เก็บผลเข้ากระเป๋า [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+
+            -- เริ่มทำงานลูปเช็คเก็บผลไม้ที่ตกอยู่ (Workspace.Collectibles)
+            connection = task.spawn(function()
+                while toggled do
+                    task.wait(0.5)
+                    pcall(function()
+                        local workspace = game:GetService("Workspace")
+                        local collectibles = workspace:FindFirstChild("Collectibles")
+                        if collectibles and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            local hrp = localPlayer.Character.HumanoidRootPart
+                            for _, v in pairs(collectibles:GetChildren()) do
+                                if v:IsA("BasePart") and (v.Position - hrp.Position).Magnitude <= 500 then
+                                    -- วาร์ปตัวละครหรือส่งคำสั่งเก็บผลไม้
+                                    firetouchinterest(hrp, v, 0)
+                                    firetouchinterest(hrp, v, 1)
+                                end
+                            end
+                        end
+                    end)
+                end
+            end)
+        else
+            btn.Text = "🧺 ออโต้เก็บผลเข้ากระเป๋า [ OFF ]"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            toggled = false
+        end
+    end)
+end
+createAutoCollectToggle(pFruit)   
