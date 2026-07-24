@@ -37,6 +37,7 @@ local SettingsData = {
     PlayerEsp = false,
     ElectroTeleport = false, -- <-- เพิ่มบรรทัดนี้ต่อท้ายเข้าไป
 WaterTeleport = false,
+FruitEsp = false, -- <-- เพิ่มตัวแปรนี้ต่อท้ายเข้าไป
 }
 
 
@@ -922,4 +923,127 @@ end
 createWaterTeleportToggle(pShop)
 
 
+-- ==========================================
+-- 🍈 ฟังก์ชัน ESP ผลไม้ (แสดงชื่อ + ระยะทางสีเหลืองทองเด่นชัด)
+-- ==========================================
+local function createFruitEspToggle(targetPage)
+    SettingsData.FruitEsp = SettingsData.FruitEsp or false
+    local toggled = SettingsData.FruitEsp
+    local espConnection = nil
+    local espCache = {}
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = targetPage
+    btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = "🍈 ESP ผลไม้ [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 13
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    local function removeEsp(v)
+        if espCache[v] then
+            if espCache[v].billboard then
+                espCache[v].billboard:Destroy()
+            end
+            espCache[v] = nil
+        end
+    end
+
+    local function clearAllEsp()
+        for v, _ in pairs(espCache) do
+            removeEsp(v)
+        end
+    end
+
+    local function runFruitEspTask(state)
+        if state then
+            espConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                pcall(function()
+                    local character = localPlayer.Character
+                    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+                    local hrp = character.HumanoidRootPart
+                    local workspace = game:GetService("Workspace")
+
+                    -- ตรวจสอบผลไม้ใน Workspace ทั้งหมด
+                    for _, v in pairs(workspace:GetChildren()) do
+                        if v.Name:match("Fruit") or v:IsA("Tool") then
+                            local handle = v:FindFirstChild("Handle") or v.PrimaryPart or (v:IsA("BasePart") and v)
+                            if handle then
+                                if not espCache[v] then
+                                    local bill = Instance.new("BillboardGui")
+                                    bill.Name = "FruitESP"
+                                    bill.Size = UDim2.new(0, 200, 0, 50)
+                                    bill.AlwaysOnTop = true
+                                    bill.StudsOffset = Vector3.new(0, 2.5, 0)
+                                    bill.Adornee = handle
+
+                                    local textLabel = Instance.new("TextLabel")
+                                    textLabel.Size = UDim2.new(1, 0, 1, 0)
+                                    textLabel.BackgroundTransparency = 1
+                                    textLabel.Font = Enum.Font.GothamBold
+                                    textLabel.TextSize = 14
+                                    textLabel.TextColor3 = Color3.fromRGB(255, 220, 0) -- สีเหลืองทองนีออน เด่นชัดที่สุด
+                                    textLabel.TextStrokeTransparency = 0 -- ขอบดำคมชัด
+                                    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                                    textLabel.Parent = bill
+
+                                    bill.Parent = handle
+                                    espCache[v] = { billboard = bill, label = textLabel }
+                                end
+
+                                -- อัปเดตระยะทางแบบเรียลไทม์
+                                local distance = math.floor((hrp.Position - handle.Position).Magnitude)
+                                if espCache[v] and espCache[v].label then
+                                    espCache[v].label.Text = "🍎 " .. v.Name .. "\n[" .. distance .. " เมตร]"
+                                end
+                            end
+                        else
+                            -- ถ้าผลไม้หายไปหรือถูกเก็บแล้ว ให้ลบ ESP ทิ้ง
+                            if espCache[v] then
+                                removeEsp(v)
+                            end
+                        end
+                    end
+                end)
+            end)
+        else
+            if espConnection then
+                espConnection:Disconnect()
+                espConnection = nil
+            end
+            clearAllEsp()
+        end
+    end
+
+    if toggled then
+        runFruitEspTag = true
+        runFruitEspTask(true)
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        SettingsData.FruitEsp = toggled
+        SaveConfig()
+
+        if toggled then
+            btn.Text = "🍈 ESP ผลไม้ [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+            runFruitEspTask(true)
+        else
+            btn.Text = "🍈 ESP ผลไม้ [ OFF ]"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            runFruitEspTask(false)
+        end
+    end)
+end
+
+-- 📌 คำสั่งเรียกใช้งานในหน้า "ผลไม้"
+createFruitEspToggle(pFruit)
 
