@@ -766,7 +766,7 @@ local function createInstantPullFruitToggle(targetPage)
 end
 
 -- 📌 คำสั่งเรียกใช้งานในหน้า "ผลไม้"
-createInstantPullFruitToggle(pFruit)
+createElectricBypassButton(pShop)
 
 
 
@@ -880,8 +880,7 @@ local function createWaterBypassButton(targetPage)
 end
 
 -- 📌 เรียกใช้งานปุ่มหมัดน้ำ
-createWaterBypassButton(pFruit)
-
+createWaterBypassButton(pShop)
 
 
 
