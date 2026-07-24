@@ -36,6 +36,7 @@ local SettingsData = {
     MonsterEsp = false,
     PlayerEsp = false,
     ElectroTeleport = false, -- <-- เพิ่มบรรทัดนี้ต่อท้ายเข้าไป
+WaterTeleport = false,
 }
 
 
@@ -793,3 +794,107 @@ end
 
 -- 📌 คำสั่งเรียกใช้งาน (ใส่ไว้ในหมวดหมู่ "ร้านค้า" หรือ pShop)
 createElectroTeleportToggle(pShop)
+
+
+
+-- ==========================================
+-- 🌊 ฟังก์ชันวาร์ปตรงพิกัดหมัดน้ำ (พุ่งตรงเป้าหมายจุดเดียวแบบนิ่งๆ)
+-- ==========================================
+local function createWaterTeleportToggle(targetPage)
+    local toggled = SettingsData.WaterTeleport
+    local tweenObject = nil
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = targetPage
+    btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = "🌊 วาร์ปตรงหมัดน้ำ [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 13
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    -- พิกัดเป้าหมายหมัดน้ำ
+    local targetPosition = Vector3.new(-4973.98, 314.84, -3222.95)
+
+    local function stopTween()
+        if tweenObject then
+            tweenObject:Cancel()
+            tweenObject = nil
+        end
+    end
+
+    local function runDirectTween(state)
+        if state then
+            pcall(function()
+                local character = localPlayer.Character
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = character.HumanoidRootPart
+                    local humanoid = character:FindFirstChild("Humanoid")
+
+                    if humanoid then
+                        humanoid.PlatformStand = true
+                    end
+
+                    local distance = (hrp.Position - targetPosition).Magnitude
+                    local speed = 280
+                    local timeTaken = distance / speed
+
+                    local TweenService = game:GetService("TweenService")
+                    local tweenInfo = TweenInfo.new(timeTaken, Enum.EasingStyle.Linear)
+                    
+                    tweenObject = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPosition)})
+                    tweenObject:Play()
+
+                    tweenObject.Completed:Connect(function(status)
+                        if status == Enum.PlaybackState.Completed and humanoid then
+                            humanoid.PlatformStand = false
+                            toggled = false
+                            SettingsData.WaterTeleport = false
+                            SaveConfig()
+                            btn.Text = "🌊 วาร์ปตรงหมัดน้ำ [ OFF ]"
+                            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+                            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+                        end
+                    end)
+                end
+            end)
+        else
+            stopTween()
+            pcall(function()
+                local character = localPlayer.Character
+                if character and character:FindFirstChild("Humanoid") then
+                    character.Humanoid.PlatformStand = false
+                end
+            end)
+        end
+    end
+
+    if toggled then
+        runDirectTween(true)
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        SettingsData.WaterTeleport = toggled
+        SaveConfig()
+
+        if toggled then
+            btn.Text = "🌊 วาร์ปตรงหมัดน้ำ [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+            runDirectTween(true)
+        else
+            btn.Text = "🌊 วาร์ปตรงหมัดน้ำ [ OFF ]"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            runDirectTween(false)
+        end
+    end)
+end
+
+-- 📌 คำสั่งเรียกใช้งาน (ใส่ไว้ในหมวดหมู่ "ร้านค้า" หรือ pShop)
+createWaterTeleportToggle(pShop)
