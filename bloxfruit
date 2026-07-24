@@ -773,7 +773,7 @@ local function createInstantPullFruitToggle(targetPage)
 end
 
 -- 📌 คำสั่งเรียกใช้งานในหน้า "ผลไม้"
-createElectricBypassButton(pShop)
+createInstantPullFruitToggle(pFruit)
 
 
 
