@@ -245,10 +245,10 @@ createGachaButton(pFruit)                  -- ปุ่มสุ่มผลไ�
 
 
 
--- 1. ฟังก์ชันสร้างปุ่มสลับเปิด-ปิด (Toggle) สำหรับออโต้เก็บผล
+-- นำฟังก์ชันนี้ไปแทนที่ฟังก์ชัน createAutoCollectToggle อันเก่าในหน้าผลไม้ (pFruit) ครับ
+
 local function createAutoCollectToggle(targetPage)
     local toggled = false
-    local connection = nil
 
     local btn = Instance.new("TextButton")
     btn.Parent = targetPage
@@ -270,20 +270,34 @@ local function createAutoCollectToggle(targetPage)
             btn.TextColor3 = Color3.fromRGB(100, 255, 100)
             btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
 
-            -- เริ่มทำงานลูปเช็คเก็บผลไม้ที่ตกอยู่ (Workspace.Collectibles)
-            connection = task.spawn(function()
+            -- ระบบวาร์ปไปเก็บผลไม้ที่ดรอป
+            task.spawn(function()
                 while toggled do
-                    task.wait(0.5)
+                    task.wait(1)
                     pcall(function()
                         local workspace = game:GetService("Workspace")
-                        local collectibles = workspace:FindFirstChild("Collectibles")
-                        if collectibles and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                            local hrp = localPlayer.Character.HumanoidRootPart
-                            for _, v in pairs(collectibles:GetChildren()) do
-                                if v:IsA("BasePart") and (v.Position - hrp.Position).Magnitude <= 500 then
-                                    -- วาร์ปตัวละครหรือส่งคำสั่งเก็บผลไม้
-                                    firetouchinterest(hrp, v, 0)
-                                    firetouchinterest(hrp, v, 1)
+                        local character = localPlayer.Character
+                        if character and character:FindFirstChild("HumanoidRootPart") then
+                            local hrp = character.HumanoidRootPart
+                            
+                            -- วนหาผลไม้ที่ดรอปอยู่ในแมพ (มักจะเก็บไว้ในโฟลเดอร์ Collectibles หรือ Drop)
+                            for _, v in pairs(workspace:GetChildren()) do
+                                if v.Name == "Fruit" or v:IsA("Tool") or (v:FindFirstChild("Handle") and v.Name:match("Fruit")) then
+                                    local targetPart = v:FindFirstChild("Handle") or v.PrimaryPart or v
+                                    if targetPart and targetPart:IsA("BasePart") then
+                                        -- วาร์ปตัวละครไปหาผลไม้ทันทีเพื่อให้เกมเก็เข้าตัว
+                                        hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                                    end
+                                end
+                            end
+                            
+                            -- เช็คในโฟลเดอร์ Collectibles สำรองด้วย
+                            local collectibles = workspace:FindFirstChild("Collectibles")
+                            if collectibles then
+                                for _, v in pairs(collectibles:GetChildren()) do
+                                    if v:IsA("BasePart") then
+                                        hrp.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                                    end
                                 end
                             end
                         end
@@ -298,4 +312,5 @@ local function createAutoCollectToggle(targetPage)
         end
     end)
 end
+
 createAutoCollectToggle(pFruit)   
