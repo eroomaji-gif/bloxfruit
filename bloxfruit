@@ -8,9 +8,9 @@ getgenv().MyScriptSettings = getgenv().MyScriptSettings or {
     PlayerEsp = false,     
     PullFruit = false,     
     FastAttack = false,
-    ElectroTeleport = false,
-    WaterTeleport = false,
-    FruitEsp = false,      
+    ElectoV1 = false,
+    RedstadV1 = false,
+FruitEsp = false,      
 }
 
 local SettingsData = getgenv().MyScriptSettings
