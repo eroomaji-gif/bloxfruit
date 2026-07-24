@@ -1,52 +1,15 @@
 -- ==========================================
--- 💾 ระบบบันทึกและโหลดค่าการตั้งค่า (Config System)
+-- 💾 ระบบจำค่าสถานะ (ใช้ getgenv แทนการเขียนไฟล์ ป้องกันโค้ดพัง)
 -- ==========================================
-local HttpService = game:GetService("HttpService")
-local configFileName = "MyScriptConfig.json"
-
--- ตารางเก็บสถานะการตั้งค่าทั้งหมด
-SettingsData = SettingsData or {
-    AutoCollectFruit = false,
-    -- สามารถเพิ่มตัวเลือกอื่นๆ ตรงนี้ได้ เช่น AutoFarm = false เป็นต้น
-}
-
--- ฟังก์ชันบันทึกค่าลงไฟล์
-function SaveConfig()
-    pcall(function()
-        local json = HttpService:JSONEncode(SettingsData)
-        if writefile then
-            writefile(configFileName, json)
-        end
-    end)
-end
-
--- ฟังก์ชันโหลดค่าเก่ากลับมาใช้ตอนรันสคริปต์ใหม่
-function LoadConfig()
-    pcall(function()
-        if isfile and isfile(configFileName) then
-            local json = readfile(configFileName)
-            local data = HttpService:JSONDecode(json)
-            if type(data) == "table" then
-                for k, v in pairs(data) do
-                    SettingsData[k] = v
-                end
-            end
-        end
-    end)
-end
-
--- สั่งรันโหลดค่าทันทีที่เปิดสคริปต์
-LoadConfig()
-
-
-local SettingsData = {
+getgenv().MyScriptSettings = getgenv().MyScriptSettings or {
     AutoCollectFruit = false,
     MonsterEsp = false,
-    PlayerEsp = false,
-    ElectroTeleport = false, -- <-- เพิ่มบรรทัดนี้ต่อท้ายเข้าไป
-WaterTeleport = false,
-FruitEsp = false, -- <-- เพิ่มตัวแปรนี้ต่อท้ายเข้าไป
+    ESPPlayer = false,
+    PullFruit = false,
+    FastAttack = false,
 }
+
+local SettingsData = getgenv().MyScriptSettings
 
 
 
