@@ -637,7 +637,7 @@ local function createESPPlayerToggle(targetPage)
 end
 
 -- 📌 คำสั่งเรียกใช้งาน (เปลี่ยน pFruit เป็นหน้าต่างของคุณ)
-createMonsterEspToggle(pGeneral)
+createPlayerEspToggle(pGeneral)
 
 
 
@@ -987,4 +987,123 @@ end
 
 -- 📌 คำสั่งเรียกใช้งานในหน้า "ผลไม้"
 createFruitEspToggle(pFruit)
+
+
+
+-- ==========================================
+-- ⚔️ ระบบ Fast Attack (โจมตีออร่ารอบตัว ไม่แสดงอนิเมชั่น เลือดลดรัวๆ)
+-- ==========================================
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+-- เพิ่มค่าสถานะลงใน SettingsData สำหรับบันทึก Config
+SettingsData = SettingsData or {}
+SettingsData.FastAttack = SettingsData.FastAttack or false
+
+local fastAttackConnection = nil
+
+local function runFastAttackSystem(state)
+    if state then
+        -- เริ่มต้นทำงานระบบสแปมดาเมจ
+        fastAttackConnection = RunService.Heartbeat:Connect(function()
+            pcall(function()
+                local character = localPlayer.Character
+                if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+                local hrp = character.HumanoidRootPart
+
+                -- ค้นหาโฟลเดอร์มอนสเตอร์ในแมพ (Blox Fruits มักจะเก็บไว้ใน Workspace.Enemies)
+                local enemiesFolder = workspace:FindFirstChild("Enemies")
+                if not enemiesFolder then return end
+
+                -- วนลูปเชื้อมอนสเตอร์ทุกตัวในรัศมีรอบตัวเรา (เช่น รัศมี 50 บล็อก)
+                for _, enemy in ipairs(enemiesFolder:GetChildren()) do
+                    local enemyHrp = enemy:FindFirstChild("HumanoidRootPart")
+                    local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+
+                    if enemyHrp and humanoid and humanoid.Health > 0 then
+                        local distance = (hrp.Position - enemyHrp.Position).Magnitude
+                        
+                        -- ถ้ามอนสเตอร์เข้ามาอยู่ในระยะรอบตัว (เช่น 55 บล็อก)
+                        if distance <= 55 then
+                            -- แอบดึงรีโมทโจมตีของเกมมายิงคำสั่งดาเมจใส่แบบไร้เสียง/ไร้อニメชั่น
+                            local replicatedStorage = game:GetService("ReplicatedStorage")
+                            local remotes = replicatedStorage:FindFirstChild("Remotes")
+                            
+                            if remotes then
+                                local attackRemote = remotes:FindFirstChild("Validator") or remotes:FindFirstChild("CommF_")
+                                
+                                -- สั่งยิงดาเมจสแปมรัวๆ ไปที่มอนสเตอร์ตัวนั้น
+                                pcall(function()
+                                    -- ยิงรีโมทโจมตีจำลองเสมือนว่าเรากำลังฟันโดนมัน
+                                    -- (ชื่อรีโมทดาเมจหลักของเกมจะถูกเรียกใช้งานตรงจุดนี้)
+                                    if remotes:FindFirstChild("Net") then
+                                        -- สำหรับรันไทม์ยุคใหม่ที่ใช้ระบบ Net Remote
+                                        remotes.Net:FireServer("AttackAction", enemy)
+                                    end
+                                end)
+
+                                -- ลดเลือดมอนสเตอร์ทางฝั่งพรีเซนต์ (หรือบังคับส่งดาเมจเคลียร์)
+                                humanoid.Health = humanoid.Health - (humanoid.MaxHealth * 0.1) -- ช่วยเร่งดาเมจให้ตายไวขึ้น
+                            end
+                        end
+                    end
+                end
+            end)
+        end)
+    else
+        -- ถ้าปิดสวิตช์ ให้ตัดการทำงานทันที
+        if fastAttackConnection then
+            fastAttackConnection:Disconnect()
+            fastAttackConnection = nil
+        end
+    end
+end
+
+-- ==========================================
+-- 🎛️ สร้างปุ่มกดเปิด-ปิด Fast Attack ใน UI ของคุณ
+-- ==========================================
+local function createFastAttackToggle(targetPage)
+    local toggled = SettingsData.FastAttack
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = targetPage
+    btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = "⚔️ Fast Attack (ออร่าตีไว) [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 13
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    -- ถ้าเปิดค้างไว้จากรอบก่อน โหลดค่ามาเปิดต่อทันที
+    if toggled then
+        runFastAttackSystem(true)
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        SettingsData.FastAttack = toggled
+        
+        if SaveConfig then SaveConfig() end
+
+        if toggled then
+            btn.Text = "⚔️ Fast Attack (ออร่าตีไว) [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+            runFastAttackSystem(true)
+        else
+            btn.Text = "⚔️ Fast Attack (ออร่าตีไว) [ OFF ]"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            runFastAttackSystem(false)
+        end
+    end)
+end
+
+-- 📌 คำสั่งเรียกใช้งาน (เปลี่ยน pFruit เป็นหน้าต่างของคุณ)
+createFastAttackToggle(Settings)
 
