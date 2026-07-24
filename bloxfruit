@@ -10,6 +10,7 @@ getgenv().MyScriptSettings = getgenv().MyScriptSettings or {
     FastAttack = false,
     ElectoV1 = false,
     RedstadV1 = false,
+CombatFish = false,
 FruitEsp = false,      
 }
 
