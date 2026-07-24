@@ -1,35 +1,43 @@
 -- ==========================================
--- 💾 ระบบบันทึกและโหลดค่าตั้งค่า (วางไว้บนสุดของสคริปต์หลัก)
+-- 💾 ระบบบันทึกและโหลดค่าการตั้งค่า (Config System)
 -- ==========================================
 local HttpService = game:GetService("HttpService")
-local ConfigFileName = "KtoCrub_Config.json"
+local configFileName = "MyScriptConfig.json"
 
-local SettingsData = {
+-- ตารางเก็บสถานะการตั้งค่าทั้งหมด
+SettingsData = SettingsData or {
     AutoCollectFruit = false,
-    MonsterEsp = false,
-    PlayerEsp = false
+    -- สามารถเพิ่มตัวเลือกอื่นๆ ตรงนี้ได้ เช่น AutoFarm = false เป็นต้น
 }
 
-local function SaveConfig()
+-- ฟังก์ชันบันทึกค่าลงไฟล์
+function SaveConfig()
     pcall(function()
+        local json = HttpService:JSONEncode(SettingsData)
         if writefile then
-            writefile(ConfigFileName, HttpService:JSONEncode(SettingsData))
+            writefile(configFileName, json)
         end
     end)
 end
 
-local function LoadConfig()
+-- ฟังก์ชันโหลดค่าเก่ากลับมาใช้ตอนรันสคริปต์ใหม่
+function LoadConfig()
     pcall(function()
-        if readfile and isfile and isfile(ConfigFileName) then
-            local decoded = HttpService:JSONDecode(readfile(ConfigFileName))
-            if type(decoded) == "table" then
-                for k, v in pairs(decoded) do SettingsData[k] = v end
+        if isfile and isfile(configFileName) then
+            local json = readfile(configFileName)
+            local data = HttpService:JSONDecode(json)
+            if type(data) == "table" then
+                for k, v in pairs(data) do
+                    SettingsData[k] = v
+                end
             end
         end
     end)
 end
 
-LoadConfig() -- สั่งให้โหลดค่าทันทีที่เปิดสคริปต์
+-- สั่งรันโหลดค่าทันทีที่เปิดสคริปต์
+LoadConfig()
+
 
 local SettingsData = {
     AutoCollectFruit = false,
