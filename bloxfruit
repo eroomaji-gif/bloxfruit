@@ -1,4 +1,41 @@
 -- ==========================================
+-- 💾 ระบบบันทึกและโหลดค่าตั้งค่า (วางไว้บนสุดของสคริปต์หลัก)
+-- ==========================================
+local HttpService = game:GetService("HttpService")
+local ConfigFileName = "KtoCrub_Config.json"
+
+local SettingsData = {
+    AutoCollectFruit = false,
+    MonsterEsp = false,
+    PlayerEsp = false
+}
+
+local function SaveConfig()
+    pcall(function()
+        if writefile then
+            writefile(ConfigFileName, HttpService:JSONEncode(SettingsData))
+        end
+    end)
+end
+
+local function LoadConfig()
+    pcall(function()
+        if readfile and isfile and isfile(ConfigFileName) then
+            local decoded = HttpService:JSONDecode(readfile(ConfigFileName))
+            if type(decoded) == "table" then
+                for k, v in pairs(decoded) do SettingsData[k] = v end
+            end
+        end
+    end)
+end
+
+LoadConfig() -- สั่งให้โหลดค่าทันทีที่เปิดสคริปต์
+
+
+
+
+
+-- ==========================================
 -- 📌 [ระบบป้องกัน] รายชื่อเจ้าของสคริปต์ (ห้ามยุ่งเด็ดขาด)
 -- ==========================================
 local ProtectedOwner = "Onsenb47162"
