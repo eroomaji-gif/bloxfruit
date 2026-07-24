@@ -377,7 +377,7 @@ local function createPureStoreFruitToggle(targetPage)
         runPureStoreTask(true)
     end
 
-    btn.MouseButton1Click:Connect(function`()
+    btn.MouseButton1Click:Connect(function()
         toggled = not toggled
         SettingsData.AutoCollectFruit = toggled
         SaveConfig()
@@ -514,89 +514,18 @@ createMonsterEspToggle(pGeneral)
 
 
 -- ==========================================
--- 👥 ระบบ ESP Player ทะลุแมพ + แสดงชื่อสีขาวเด่นชัด (กวาดทั้งเซิร์ฟเวอร์)
+-- 👥 ระบบ ESP Player ใหม่ทั้งหมด (ชื่อ + ระยะทาง + สีตามทีม/สถานะ)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
 
--- ตารางเก็บสถานะ ESP Player (ใช้ร่วมกับ Config ได้)
-SettingsData = SettingsData or {}
-SettingsData.ESPPlayer = SettingsData.ESPPlayer or false
-local espEnabled = SettingsData.ESPPlayer
-
--- ฟังก์ชันสร้างป้ายชื่อและกล่อง ESP ให้ผู้เล่นแต่ละคน
-local function setupPlayerESP(player)
-    if player == localPlayer then return end
-
-    local function createVisuals(character)
-        if not character then return end
-        local head = character:WaitForChild("Head", 5)
-        if not head then return end
-
-        -- เช็คดูว่ามีป้ายชื่ออยู่แล้วหรือยัง ถ้ามีให้ลบอันเก่าทิ้งก่อนกันบั๊กซ้ำซ้อน
-        if head:FindFirstChild("CustomESPName") then
-            head.CustomESPName:Destroy()
-        end
-
-        -- 1. สร้างป้ายชื่อสีขาวลอยเหนือหัว (มองเห็นทะลุกำแพง)
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "CustomESPName"
-        billboard.Adornee = head
-        billboard.Size = UDim2.new(0, 200, 0, 50)
-        billboard.StudsOffset = Vector3.new(0, 2.5, 0) -- ลอยอยู่เหนือหัวนิดหน่อย
-        billboard.AlwaysOnTop = true -- 👈 สำคัญมาก! ทำให้มองทะลุกำแพงและสิ่งกีดขวางได้
-        billboard.Parent = head
-
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Parent = billboard
-        textLabel.BackgroundTransparency = 1
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.Text = player.Name -- แสดงชื่อผู้เล่น
-        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- 🤍 สีขาวเด่นชัด ไม่ซ้ำสีเหลืองของผลไม้
-        textLabel.TextSize = 14
-        textLabel.TextStrokeTransparency = 0 -- ใส่ขอบดำให้ตัวหนังสือคมชัด มองเห็นง่ายบนทุกพื้นหลัง
-        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    end
-
-    -- ถ้าตัวละครเกิดอยู่แล้ว ให้ใส่ ESP ให้ทันที
-    if player.Character then
-        createVisuals(player.Character)
-    end
-
-    -- ดักจับกรณีที่ผู้เล่นตายแล้วเกิดใหม่
-    player.CharacterAdded:Connect(function(newCharacter)
-        createVisuals(newCharacter)
-    end)
-end
-
--- ฟังก์ชันเปิด/ปิดระบบ ESP Player ทั้งหมด
-local function runESPPlayerSystem(state)
-    if state then
-        -- วนลูปเช็คผู้เล่นที่มีอยู่แล้วในเซิร์ฟเวอร์
-        for _, player in ipairs(Players:GetPlayers()) do
-            setupPlayerESP(player)
-        end
-        -- ดักจับผู้เล่นใหม่ที่เพิ่งเข้าเกมมา
-        Players.PlayerAdded:Connect(setupPlayerESP)
-    else
-        -- ถ้าปิด ให้ลบป้ายชื่อทั้งหมดทิ้ง
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Character and player.Character:FindFirstChild("Head") then
-                local esp = player.Character.Head:FindFirstChild("CustomESPName")
-                if esp then esp:Destroy() end
-            end
-        end
-    end
-end
-
--- ==========================================
--- 🎛️ สร้างปุ่มกดเปิด-ปิด ESP Player ใน UI ของคุณ
--- ==========================================
 local function createESPPlayerToggle(targetPage)
     local toggled = SettingsData.ESPPlayer
+    local espCache = {} -- ตารางเก็บข้อมูล ESP ของแต่ละผู้เล่น
+    local renderConnection = nil
 
+    -- สร้างปุ่มเปิด/ปิดใน UI
     local btn = Instance.new("TextButton")
     btn.Parent = targetPage
     btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
@@ -610,34 +539,156 @@ local function createESPPlayerToggle(targetPage)
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    -- รันสถานะเริ่มต้นตาม Config ที่เซฟไว้
-    if toggled then
-        runESPPlayerSystem(true)
+    -- ฟังก์ชันลบ ESP ของผู้เล่นคนนั้นๆ เมื่อปิดใช้งานหรือผู้เล่นออก
+    local function removePlayerESP(player)
+        if espCache[player] then
+            if espCache[player].billboard then
+                espCache[player].billboard:Destroy()
+            end
+            if espCache[player].highlight then
+                espCache[player].highlight:Destroy()
+            end
+            espCache[player] = nil
+        end
     end
 
+    -- ฟังก์ชันเคลียร์ ESP ทั้งหมด
+    local function clearAllESP()
+        for player, _ in pairs(espCache) do
+            removePlayerESP(player)
+        end
+    end
+
+    -- ฟังก์ชันสร้าง ESP ให้ผู้เล่น
+    local function setupPlayerESP(player)
+        if player == localPlayer then return end
+
+        local function applyESP(character)
+            if not character then return end
+            removePlayerESP(player)
+
+            local head = character:WaitForChild("Head", 5)
+            local hrp = character:WaitForChild("HumanoidRootPart", 5)
+            if not head or not hrp then return end
+
+            -- 1. สร้างกรอบ Highlight ตัวละครทะลุกำแพง
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "PlayerHighlight"
+            highlight.Adornee = character
+            highlight.Parent = character
+            highlight.FillColor = Color3.fromRGB(0, 170, 255)
+            highlight.FillTransparency = 0.7
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.OutlineTransparency = 0
+
+            -- 2. สร้างป้ายชื่อและระยะทางลอยเหนือหัว
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "PlayerESPBillboard"
+            billboard.Adornee = head
+            billboard.Size = UDim2.new(0, 200, 0, 50)
+            billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+            billboard.AlwaysOnTop = true
+
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Name = "ESPText"
+            textLabel.Parent = billboard
+            textLabel.BackgroundTransparency = 1
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.Font = Enum.Font.GothamBold
+            textLabel.TextSize = 13
+            textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            textLabel.TextStrokeTransparency = 0
+            textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+            textLabel.Text = player.Name
+
+            billboard.Parent = head
+
+            -- บันทึกลง Cache
+            espCache[player] = {
+                character = character,
+                hrp = hrp,
+                billboard = billboard,
+                label = textLabel,
+                highlight = highlight
+            }
+        end
+
+        if player.Character then
+            applyESP(player.Character)
+        end
+
+        player.CharacterAdded:Connect(function(newChar)
+            if toggled then
+                applyESP(newChar)
+            end
+        end)
+    end
+
+    -- ฟังก์ชันเริ่มทำงานระบบลูปอัปเดตระยะทางแบบเรียลไทม์
+    local function runESPTask(state)
+        if state then
+            -- สร้าง ESP ให้ผู้เล่นที่มีอยู่แล้วในเซิร์ฟเวอร์
+            for _, player in ipairs(Players:GetPlayers()) do
+                setupPlayerESP(player)
+            end
+
+            -- ดักจับเมื่อมีผู้เล่นใหม่เข้ามาในเซิร์ฟเวอร์
+            Players.PlayerAdded:Connect(setupPlayerESP)
+
+            -- ดักจับผู้เล่นที่ออกจากเซิร์ฟเวอร์เพื่อเคลียร์แรม
+            Players.PlayerRemoving:Connect(removePlayerESP)
+
+            -- อัปเดตระยะทาง (Distance) ทุกๆ เฟรม
+            renderConnection = RunService.RenderStepped:Connect(function()
+                local localChar = localPlayer.Character
+                local localHrp = localChar and localChar:FindFirstChild("HumanoidRootPart")
+
+                for player, data in pairs(espCache) do
+                    pcall(function()
+                        if data.hrp and localHrp and data.label then
+                            local distance = math.floor((data.hrp.Position - localHrp.Position).Magnitude)
+                            data.label.Text = "👤 " .. player.Name .. "\n[" .. distance .. " เมตร]"
+                        end
+                    end)
+                end
+            end)
+        else
+            if renderConnection then
+                renderConnection:Disconnect()
+                renderConnection = nil
+            end
+            clearAllESP()
+        end
+    end
+
+    -- ถ้าระบบเคยเปิดอยู่ตอนโหลด Config ให้รันต่อเนื่องทันที
+    if toggled then
+        runESPTask(true)
+    end
+
+    -- กดปุ่มเพื่อเปิด/ปิด
     btn.MouseButton1Click:Connect(function()
         toggled = not toggled
         SettingsData.ESPPlayer = toggled
-        
-        -- ถ้ามีฟังก์ชัน SaveConfig จากระบบก่อนหน้านี้ มันจะบันทึกออโต้ด้วย
-        if SaveConfig then SaveConfig() end
+        SaveConfig() -- บันทึกค่าลงไฟล์ JSON อัตโนมัติ
 
         if toggled then
             btn.Text = "👥 ESP Player ทะลุกำแพง [ ON ]"
             btn.TextColor3 = Color3.fromRGB(100, 255, 100)
             btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
-            runESPPlayerSystem(true)
+            runESPTask(true)
         else
             btn.Text = "👥 ESP Player ทะลุกำแพง [ OFF ]"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            runESPPlayerSystem(false)
+            runESPTask(false)
         end
     end)
 end
 
--- 📌 คำสั่งเรียกใช้งาน (เปลี่ยน pFruit เป็นหน้าต่างของคุณ)
-createPlayerEspToggle(pGeneral)
+-- นำไปใส่ไว้ในหน้าต่างเมนูที่คุณต้องการ (ตัวอย่างเช่น pGeneral)
+createESPPlayerToggle(pGeneral)
+
 
 
 
@@ -1105,5 +1156,4 @@ local function createFastAttackToggle(targetPage)
 end
 
 -- 📌 คำสั่งเรียกใช้งาน (เปลี่ยน pFruit เป็นหน้าต่างของคุณ)
-createFastAttackToggle(Settings)
-
+createFastAttackToggle(pSettings)
