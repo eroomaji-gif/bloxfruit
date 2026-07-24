@@ -211,3 +211,35 @@ createSidebarButton("เผ่า", pRace)
 createSidebarButton("ร้านค้า", pShop)
 createSidebarButton("PVP", pPVP)
 createSidebarButton("ตั้งค่า", pSettings)
+
+
+
+
+-- ==========================================
+-- 🍎 ฟังก์ชันเพิ่มปุ่ม "ผลมังกรถาวร" ไว้ในหน้า "ผลไม้" (pFruit)
+-- ==========================================
+local function createFruitButton(fruitName, displayName, targetPage)
+    local btn = Instance.new("TextButton")
+    btn.Parent = targetPage
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = "🍎 กดใช้ผลถาวร: " .. displayName
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 13
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        local args = {
+            [1] = "ChangeFruit",
+            [2] = fruitName
+        }
+        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+    end)
+end
+
+-- ใส่ปุ่มกดผลมังกรไว้ในหน้า "ผลไม้"
+createFruitButton("Dragon", "มังกร (Dragon)", pFruit)
