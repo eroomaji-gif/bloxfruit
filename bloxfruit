@@ -318,7 +318,7 @@ createAutoCollectToggle(pFruit)
 
 
 -- ==========================================
--- 👁️ ฟังก์ชันระบบ ESP มอนสเตอร์ (ใส่ไว้ในหน้า "ทั่วไป" หรือ pGeneral)
+-- 👁️ ฟังก์ชันระบบ ESP มอนสเตอร์ (รัศมี 200 เมตร พร้อมกรอบแดงและสีจาง)
 -- ==========================================
 
 local function createMonsterEspToggle(targetPage)
@@ -331,7 +331,7 @@ local function createMonsterEspToggle(targetPage)
     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     btn.Size = UDim2.new(1, -10, 0, 38)
     btn.Font = Enum.Font.GothamBold
-    btn.Text = "👁️ ESP มอนสเตอร์ (กรอบแดง) [ OFF ]"
+    btn.Text = "👁️ ESP มอนสเตอร์รอบตัว (200m) [ OFF ]"
     btn.TextColor3 = Color3.fromRGB(255, 100, 100)
     btn.TextSize = 13
 
@@ -351,33 +351,56 @@ local function createMonsterEspToggle(targetPage)
     btn.MouseButton1Click:Connect(function()
         toggled = not toggled
         if toggled then
-            btn.Text = "👁️ ESP มอนสเตอร์ (กรอบแดง) [ ON ]"
+            btn.Text = "👁️ ESP มอนสเตอร์รอบตัว (200m) [ ON ]"
             btn.TextColor3 = Color3.fromRGB(100, 255, 100)
             btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
 
-            -- เริ่มทำงานระบบ ESP
+            -- เริ่มทำงานระบบ ESP เช็ครัศมี 200 เมตร
             espConnection = task.spawn(function()
                 while toggled do
-                    task.wait(1) -- เช็คมอนสเตอร์เกิดใหม่ทุกๆ 1 วินาที
+                    task.wait(0.5) -- เช็คทุกๆ 0.5 วินาทีเพื่อให้เรดาร์อัปเดตไวขึ้น
                     pcall(function()
-                        local enemiesFolder = game:GetService("Workspace"):FindFirstChild("Enemies")
-                        if enemiesFolder then
-                            for _, enemy in pairs(enemiesFolder:GetChildren()) do
-                                if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                                    -- เช็คว่าตัวมอนสเตอร์นี้เคยใส่ Highlight หรือยัง ถ้ายังให้สร้างเพิ่ม
-                                    if not enemy:FindFirstChild("MonsterHighlight") then
-                                        local highlight = Instance.new("Highlight")
-                                        highlight.Name = "MonsterHighlight"
-                                        highlight.Adornee = enemy
-                                        highlight.Parent = enemy
+                        local workspace = game:GetService("Workspace")
+                        local players = game:GetService("Players")
+                        local localPlayer = players.LocalPlayer
+                        local character = localPlayer.Character
+                        
+                        if character and character:FindFirstChild("HumanoidRootPart") then
+                            local hrp = character.HumanoidRootPart
+                            local enemiesFolder = workspace:FindFirstChild("Enemies")
+                            
+                            if enemiesFolder then
+                                -- ตรวจสอบมอนสเตอร์ทั้งหมดในแมพ
+                                for _, enemy in pairs(enemiesFolder:GetChildren()) do
+                                    local enemyRoot = enemy:FindFirstChild("HumanoidRootPart") or enemy.PrimaryPart
+                                    local humanoid = enemy:FindFirstChild("Humanoid")
+                                    
+                                    if enemyRoot and humanoid and humanoid.Health > 0 then
+                                        -- คำนวณระยะห่างจากตัวผู้เล่น (หน่วยเป็น Studs / 1 เมตรโดยประมาณเท่ากับ 3-4 Studs แต่ตั้งไว้ที่ 600 Studs เทียบเท่าระยะ 200 เมตร)
+                                        local distance = (enemyRoot.Position - hrp.Position).Magnitude
                                         
-                                        -- ตั้งค่าสีแดงและสีจางโปร่งแสงตามต้องการ
-                                        highlight.FillColor = Color3.fromRGB(255, 0, 0)     -- สีด้านใน (ปรับความจางได้ที่ FillTransparency)
-                                        highlight.FillTransparency = 0.75                     -- ความจางของสีด้านใน (ยิ่งเยอะยิ่งโปร่งแสง)
-                                        highlight.OutlineColor = Color3.fromRGB(255, 0, 0)  -- สีเส้นกรอบขอบนอก
-                                        highlight.OutlineTransparency = 0                   -- ความชัดของเส้นขอบ (0 = ชัดสุด)
-                                        
-                                        table.insert(activeHighlights, highlight)
+                                        if distance <= 600 then -- 600 Studs = ประมาณ 200 เมตร
+                                            if not enemy:FindFirstChild("MonsterHighlight") then
+                                                local highlight = Instance.new("Highlight")
+                                                highlight.Name = "MonsterHighlight"
+                                                highlight.Adornee = enemy
+                                                highlight.Parent = enemy
+                                                
+                                                -- ตั้งค่ากรอบสีแดงและสีจางด้านใน
+                                                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                                                highlight.FillTransparency = 0.75 -- ความจางด้านใน
+                                                highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+                                                highlight.OutlineTransparency = 0
+                                                
+                                                table.insert(activeHighlights, highlight)
+                                            end
+                                        else
+                                            -- ถ้าเดินออกนอกระยะ 200 เมตร ให้เอาไฮไลท์ออกเพื่อประหยัดทรัพยากร
+                                            local existingHighlight = enemy:FindFirstChild("MonsterHighlight")
+                                            if existingHighlight then
+                                                existingHighlight:Destroy()
+                                            end
+                                        end
                                     end
                                 end
                             end
@@ -386,12 +409,11 @@ local function createMonsterEspToggle(targetPage)
                 end
             end)
         else
-            btn.Text = "👁️ ESP มอนสเตอร์ (กรอบแดง) [ OFF ]"
+            btn.Text = "👁️ ESP มอนสเตอร์รอบตัว (200m) [ OFF ]"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
             toggled = false
             
-            -- ปิดการทำงานและล้างกรอบ ESP ทั้งหมดทิ้ง
             if espConnection then
                 task.cancel(espConnection)
             end
@@ -400,6 +422,5 @@ local function createMonsterEspToggle(targetPage)
     end)
 end
 
--- 📌 คำสั่งเรียกใช้งาน (จำเป็นต้องมีบรรทัดนี้เพื่อให้ปุ่มไปโผล่ในหน้า "ทั่วไป")
+-- 📌 คำสั่งเรียกใช้งาน (แปะไว้ให้ปุ่มโผล่ในหน้า "ทั่วไป")
 createMonsterEspToggle(pGeneral)
-
