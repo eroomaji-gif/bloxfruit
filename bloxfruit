@@ -429,7 +429,7 @@ createMonsterEspToggle(pGeneral)
 
 
 -- ==========================================
--- 👥 ฟังก์ชันระบบ ESP ผู้เล่น (เช็คทั้งแมพ: โจรสรัด = สีฟ้า, มารีน = สีเขียว)
+-- 👥 ฟังก์ชันระบบ ESP ผู้เล่น (มารีน = สีฟ้า, โจร = กรอบเขียว/ใสในสีส้ม)
 -- ==========================================
 
 local function createPlayerEspToggle(targetPage)
@@ -483,10 +483,17 @@ local function createPlayerEspToggle(targetPage)
                                     local team = player.Team
                                     local teamName = team and team.Name or ""
                                     
-                                    -- เช็คและกำหนดสีตามฝ่าย (มารีน = สีเขียว, โจรสรัด/อื่นๆ = สีฟ้า)
-                                    local espColor = Color3.fromRGB(0, 170, 255) -- ค่าเริ่มต้นสีฟ้า (โจรสรัด)
+                                    -- กำหนดสีตามเงื่อนไขใหม่
+                                    local fillColor, outlineColor
+                                    
                                     if teamName == "Marine" then
-                                        espColor = Color3.fromRGB(0, 255, 100) -- สีเขียวสำหรับมารีน
+                                        -- มารีน = สีฟ้าทั้งหมด
+                                        fillColor = Color3.fromRGB(0, 170, 255)
+                                        outlineColor = Color3.fromRGB(0, 170, 255)
+                                    else
+                                        -- โจรสรัด / อื่นๆ = ด้านในสีส้ม, กรอบเส้นสีเขียว
+                                        fillColor = Color3.fromRGB(255, 128, 0)
+                                        outlineColor = Color3.fromRGB(0, 255, 0)
                                     end
 
                                     -- สร้างหรืออัปเดต Highlight กรอบเรืองแสง
@@ -499,10 +506,10 @@ local function createPlayerEspToggle(targetPage)
                                         table.insert(activeHighlights, highlight)
                                     end
 
-                                    -- อัปเดตสีตามฝ่ายปัจจุบัน
-                                    highlight.FillColor = espColor
+                                    -- อัปเดตสีตามที่ตั้งค่าไว้
+                                    highlight.FillColor = fillColor
                                     highlight.FillTransparency = 0.75 -- ความจางด้านใน
-                                    highlight.OutlineColor = espColor
+                                    highlight.OutlineColor = outlineColor
                                     highlight.OutlineTransparency = 0  -- กรอบชัดเจน
                                 end
                             end
