@@ -289,59 +289,61 @@ createGachaButton(pFruit)                  -- ปุ่มสุ่มผลไ�
 
 
 
--- นำฟังก์ชันนี้ไปแทนที่ฟังก์ชัน createAutoCollectToggle อันเก่าในหน้าผลไม้ (pFruit) ครับ
-
-local function createAutoCollectToggle(targetPage)
-    local toggled = false
+-- ==========================================
+-- 🎒 ระบบออโต้เก็บผลที่อยู่ในตัว/ถือในมือเข้าคลังทันที
+-- ==========================================
+local function createAutoStoreInventoryFruitToggle(targetPage)
+    local toggled = SettingsData.AutoCollectFruit
+    local checkConnection = nil
 
     local btn = Instance.new("TextButton")
     btn.Parent = targetPage
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
     btn.Size = UDim2.new(1, -10, 0, 38)
     btn.Font = Enum.Font.GothamBold
-    btn.Text = "🧺 ออโต้เก็บผลเข้ากระเป๋า [ OFF ]"
-    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.Text = "🎒 ออโต้เก็บผลในตัวเข้าคลัง [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
     btn.TextSize = 13
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    btn.MouseButton1Click:Connect(function()
-        toggled = not toggled
-        if toggled then
-            btn.Text = "🧺 ออโต้เก็บผลเข้ากระเป๋า [ ON ]"
-            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
-            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
-
-            -- ระบบวาร์ปไปเก็บผลไม้ที่ดรอป
-            task.spawn(function()
+    local function runInventoryCheck(state)
+        if state then
+            checkConnection = task.spawn(function()
+                local replicatedStorage = game:GetService("ReplicatedStorage")
+                
                 while toggled do
-                    task.wait(1)
+                    task.wait(0.2) -- เช็คถี่ๆ ทุกๆ 0.2 วินาที (ไวและไม่แลค)
+                    
                     pcall(function()
-                        local workspace = game:GetService("Workspace")
                         local character = localPlayer.Character
-                        if character and character:FindFirstChild("HumanoidRootPart") then
-                            local hrp = character.HumanoidRootPart
-                            
-                            -- วนหาผลไม้ที่ดรอปอยู่ในแมพ (มักจะเก็บไว้ในโฟลเดอร์ Collectibles หรือ Drop)
-                            for _, v in pairs(workspace:GetChildren()) do
-                                if v.Name == "Fruit" or v:IsA("Tool") or (v:FindFirstChild("Handle") and v.Name:match("Fruit")) then
-                                    local targetPart = v:FindFirstChild("Handle") or v.PrimaryPart or v
-                                    if targetPart and targetPart:IsA("BasePart") then
-                                        -- วาร์ปตัวละครไปหาผลไม้ทันทีเพื่อให้เกมเก็เข้าตัว
-                                        hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
-                                    end
+                        local backpack = localPlayer:FindFirstChildOfClass("Backpack")
+                        
+                        -- ฟังก์ชันช่วยส่งรีโมทเก็บผล
+                        local function storeIt(fruitObj)
+                            if fruitObj and (fruitObj.Name:match("Fruit") or fruitObj:IsA("Tool")) then
+                                pcall(function()
+                                    replicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", fruitObj.Name, fruitObj)
+                                end)
+                            end
+                        end
+
+                        -- 1. เช็คผลไม้ที่ถืออยู่ในมือ (Character)
+                        if character then
+                            for _, item in pairs(character:GetChildren()) do
+                                if item:IsA("Tool") and (item.Name:match("Fruit") or item:FindFirstChild("Handle")) then
+                                    storeIt(item)
                                 end
                             end
-                            
-                            -- เช็คในโฟลเดอร์ Collectibles สำรองด้วย
-                            local collectibles = workspace:FindFirstChild("Collectibles")
-                            if collectibles then
-                                for _, v in pairs(collectibles:GetChildren()) do
-                                    if v:IsA("BasePart") then
-                                        hrp.CFrame = v.CFrame + Vector3.new(0, 3, 0)
-                                    end
+                        end
+
+                        -- 2. เช็คผลไม้ที่อยู่ในกระเป๋าหลักของผู้เล่น (Backpack)
+                        if backpack then
+                            for _, item in pairs(backpack:GetChildren()) do
+                                if item:IsA("Tool") and (item.Name:match("Fruit") or item:FindFirstChild("Handle")) then
+                                    storeIt(item)
                                 end
                             end
                         end
@@ -349,15 +351,39 @@ local function createAutoCollectToggle(targetPage)
                 end
             end)
         else
-            btn.Text = "🧺 ออโต้เก็บผลเข้ากระเป๋า [ OFF ]"
+            if checkConnection then
+                task.cancel(checkConnection)
+                checkConnection = nil
+            end
+        end
+    end
+
+    -- โหลดค่าเดิมตอนเปิดสคริปต์
+    if toggled then
+        runInventoryCheck(true)
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        SettingsData.AutoCollectFruit = toggled
+        SaveConfig() -- บันทึกค่าลงไฟล์
+
+        if toggled then
+            btn.Text = "🎒 ออโต้เก็บผลในตัวเข้าคลัง [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+            runInventoryCheck(true)
+        else
+            btn.Text = "🎒 ออโต้เก็บผลในตัวเข้าคลัง [ OFF ]"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            toggled = false
+            runInventoryCheck(false)
         end
     end)
 end
 
-createAutoCollectToggle(pFruit)   
+-- 📌 คำสั่งเรียกใช้งานในหน้า "ผลไม้"
+createAutoStoreInventoryFruitToggle(pFruit)
 
 
 
