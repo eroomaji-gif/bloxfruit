@@ -31,6 +31,12 @@ end
 
 LoadConfig() -- สั่งให้โหลดค่าทันทีที่เปิดสคริปต์
 
+local SettingsData = {
+    AutoCollectFruit = false,
+    MonsterEsp = false,
+    PlayerEsp = false,
+    ElectroTeleport = false, -- <-- เพิ่มบรรทัดนี้ต่อท้ายเข้าไป
+}
 
 
 
