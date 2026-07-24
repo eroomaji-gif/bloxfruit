@@ -681,15 +681,8 @@ createAutoTeleportFruitToggle(pFruit)
 
 
 
-
-
-
-
-
-
-
 -- ==========================================
--- ⚡ ฟังก์ชันวาร์ปตรงพิกัดหมัดสายฟ้า (พุ่งตรงเป้าหมายจุดเดียวแบบนิ่งๆ)
+-- ⚡ ฟังก์ชันวาร์ปหมัดสายฟ้า (บินนุ่มๆ สมูทๆ ไม่กระชาก)
 -- ==========================================
 local function createElectroTeleportToggle(targetPage)
     local toggled = SettingsData.ElectroTeleport
@@ -700,7 +693,7 @@ local function createElectroTeleportToggle(targetPage)
     btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
     btn.Size = UDim2.new(1, -10, 0, 38)
     btn.Font = Enum.Font.GothamBold
-    btn.Text = "⚡ วาร์ปตรงหมัดสายฟ้า [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.Text = "⚡ หมัดสายฟ้า [ " .. (toggled and "ON" or "OFF") .. " ]"
     btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
     btn.TextSize = 13
 
@@ -708,7 +701,6 @@ local function createElectroTeleportToggle(targetPage)
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    -- พิกัดเป้าหมายเดียวแบบปักหมุด
     local targetPosition = Vector3.new(-10372.78, 331.97, -10129.82)
 
     local function stopTween()
@@ -718,7 +710,7 @@ local function createElectroTeleportToggle(targetPage)
         end
     end
 
-    local function runDirectTween(state)
+    local function runSmoothTween(state)
         if state then
             pcall(function()
                 local character = localPlayer.Character
@@ -726,31 +718,28 @@ local function createElectroTeleportToggle(targetPage)
                     local hrp = character.HumanoidRootPart
                     local humanoid = character:FindFirstChild("Humanoid")
 
-                    -- ล็อกท่าทางตัวละครให้ยืนนิ่งสนิทระหว่างบินพุ่งตรง
                     if humanoid then
                         humanoid.PlatformStand = true
                     end
 
-                    -- คำนวณระยะทางจากจุดที่ยืนอยู่ไปยังเป้าหมายโดยตรง
                     local distance = (hrp.Position - targetPosition).Magnitude
-                    local speed = 280 -- ความเร็วคงที่กำลังสวย (ไม่ไวเกินไปจนเกมดีด และไม่ช้าเกินไป)
+                    local speed = 160 -- ปรับความเร็วลงให้นุ่มนวล ไม่กระชาก
                     local timeTaken = distance / speed
 
                     local TweenService = game:GetService("TweenService")
-                    local tweenInfo = TweenInfo.new(timeTaken, Enum.EasingStyle.Linear)
+                    -- เปลี่ยน EasingStyle เป็น Quad เพื่อความสมูท นุ่มนวลตอนออกตัวและหยุด
+                    local tweenInfo = TweenInfo.new(timeTaken, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
                     
-                    -- สร้างการทวีนพุ่งตรงไปยังพิกัดเป้าหมายทันทีแบบเส้นตรง
                     tweenObject = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPosition)})
                     tweenObject:Play()
 
-                    -- เมื่อบินถึงพิกัดเป้าหมายแล้ว คืนค่าตัวละครให้ปกติ
                     tweenObject.Completed:Connect(function(status)
                         if status == Enum.PlaybackState.Completed and humanoid then
                             humanoid.PlatformStand = false
                             toggled = false
                             SettingsData.ElectroTeleport = false
                             SaveConfig()
-                            btn.Text = "⚡ วาร์ปตรงหมัดสายฟ้า [ OFF ]"
+                            btn.Text = "⚡ หมัดสายฟ้า [ OFF ]"
                             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
                             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
                         end
@@ -768,9 +757,8 @@ local function createElectroTeleportToggle(targetPage)
         end
     end
 
-    -- โหลดค่าเดิมตอนรันสคริปต์
     if toggled then
-        runDirectTween(true)
+        runSmoothTween(true)
     end
 
     btn.MouseButton1Click:Connect(function()
@@ -779,26 +767,29 @@ local function createElectroTeleportToggle(targetPage)
         SaveConfig()
 
         if toggled then
-            btn.Text = "⚡ วาร์ปตรงหมัดสายฟ้า [ ON ]"
+            btn.Text = "⚡ หมัดสายฟ้า [ ON ]"
             btn.TextColor3 = Color3.fromRGB(100, 255, 100)
             btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
-            runDirectTween(true)
+            runSmoothTween(true)
         else
-            btn.Text = "⚡ วาร์ปตรงหมัดสายฟ้า [ OFF ]"
+            btn.Text = "⚡ หมัดสายฟ้า [ OFF ]"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            runDirectTween(false)
+            runSmoothTween(false)
         end
     end)
 end
 
--- 📌 คำสั่งเรียกใช้งาน (ใส่ไว้ในหมวดหมู่ "ร้านค้า" หรือ pShop)
 createElectroTeleportToggle(pShop)
 
 
 
+
+
+
+
 -- ==========================================
--- 🌊 ฟังก์ชันวาร์ปตรงพิกัดหมัดน้ำ (พุ่งตรงเป้าหมายจุดเดียวแบบนิ่งๆ)
+-- 🌊 ฟังก์ชันวาร์ปหมัดน้ำ (บินนุ่มๆ สมูทๆ ไม่กระชาก)
 -- ==========================================
 local function createWaterTeleportToggle(targetPage)
     local toggled = SettingsData.WaterTeleport
@@ -809,7 +800,7 @@ local function createWaterTeleportToggle(targetPage)
     btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
     btn.Size = UDim2.new(1, -10, 0, 38)
     btn.Font = Enum.Font.GothamBold
-    btn.Text = "🌊 วาร์ปตรงหมัดน้ำ [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.Text = "🌊 หมัดน้ำ [ " .. (toggled and "ON" or "OFF") .. " ]"
     btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
     btn.TextSize = 13
 
@@ -817,7 +808,6 @@ local function createWaterTeleportToggle(targetPage)
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    -- พิกัดเป้าหมายหมัดน้ำ
     local targetPosition = Vector3.new(-4973.98, 314.84, -3222.95)
 
     local function stopTween()
@@ -827,7 +817,7 @@ local function createWaterTeleportToggle(targetPage)
         end
     end
 
-    local function runDirectTween(state)
+    local function runSmoothTween(state)
         if state then
             pcall(function()
                 local character = localPlayer.Character
@@ -840,11 +830,11 @@ local function createWaterTeleportToggle(targetPage)
                     end
 
                     local distance = (hrp.Position - targetPosition).Magnitude
-                    local speed = 280
+                    local speed = 160 -- ปรับความเร็วลงให้นุ่มนวล
                     local timeTaken = distance / speed
 
                     local TweenService = game:GetService("TweenService")
-                    local tweenInfo = TweenInfo.new(timeTaken, Enum.EasingStyle.Linear)
+                    local tweenInfo = TweenInfo.new(timeTaken, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
                     
                     tweenObject = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPosition)})
                     tweenObject:Play()
@@ -855,7 +845,7 @@ local function createWaterTeleportToggle(targetPage)
                             toggled = false
                             SettingsData.WaterTeleport = false
                             SaveConfig()
-                            btn.Text = "🌊 วาร์ปตรงหมัดน้ำ [ OFF ]"
+                            btn.Text = "🌊 หมัดน้ำ [ OFF ]"
                             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
                             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
                         end
@@ -874,7 +864,7 @@ local function createWaterTeleportToggle(targetPage)
     end
 
     if toggled then
-        runDirectTween(true)
+        runSmoothTween(true)
     end
 
     btn.MouseButton1Click:Connect(function()
@@ -883,18 +873,20 @@ local function createWaterTeleportToggle(targetPage)
         SaveConfig()
 
         if toggled then
-            btn.Text = "🌊 วาร์ปตรงหมัดน้ำ [ ON ]"
+            btn.Text = "🌊 หมัดน้ำ [ ON ]"
             btn.TextColor3 = Color3.fromRGB(100, 255, 100)
             btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
-            runDirectTween(true)
+            runSmoothTween(true)
         else
-            btn.Text = "🌊 วาร์ปตรงหมัดน้ำ [ OFF ]"
+            btn.Text = "🌊 หมัดน้ำ [ OFF ]"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            runDirectTween(false)
+            runSmoothTween(false)
         end
     end)
 end
 
--- 📌 คำสั่งเรียกใช้งาน (ใส่ไว้ในหมวดหมู่ "ร้านค้า" หรือ pShop)
 createWaterTeleportToggle(pShop)
+
+
+
