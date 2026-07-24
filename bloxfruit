@@ -687,20 +687,20 @@ createAutoTeleportFruitToggle(pFruit)
 
 
 
-
 -- ==========================================
--- ⚡ ฟังก์ชันวาร์ปไปซื้อหมัดสายฟ้า (ร้านค้า)
+-- ⚡ ฟังก์ชันวาร์ปไปซื้อหมัดสายฟ้า + สแปมรีโมทซื้ออัตโนมัติ
 -- ==========================================
 local function createElectroTeleportToggle(targetPage)
     local toggled = SettingsData.ElectroTeleport
     local tweenObject = nil
+    local buyConnection = nil
 
     local btn = Instance.new("TextButton")
     btn.Parent = targetPage
     btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
     btn.Size = UDim2.new(1, -10, 0, 38)
     btn.Font = Enum.Font.GothamBold
-    btn.Text = "⚡ วาร์ปไปซื้อหมัดสายฟ้า [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.Text = "⚡ ซื้อหมัดสายฟ้าออโต้ [ " .. (toggled and "ON" or "OFF") .. " ]"
     btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
     btn.TextSize = 13
 
@@ -710,6 +710,17 @@ local function createElectroTeleportToggle(targetPage)
 
     local targetPosition = Vector3.new(-10372.78, 331.97, -10129.82)
 
+    local function stopElectroTask()
+        if tweenObject then
+            tweenObject:Cancel()
+            tweenObject = nil
+        end
+        if buyConnection then
+            task.cancel(buyConnection)
+            buyConnection = nil
+        end
+    end
+
     local function runTween(state)
         if state then
             pcall(function()
@@ -717,7 +728,7 @@ local function createElectroTeleportToggle(targetPage)
                 if character and character:FindFirstChild("HumanoidRootPart") then
                     local hrp = character.HumanoidRootPart
                     local distance = (hrp.Position - targetPosition).Magnitude
-                    local speed = 350 -- ความเร็วในการบิน (ปรับมาก/น้อยได้ตามชอบ)
+                    local speed = 350
                     local timeTaken = distance / speed
 
                     local TweenService = game:GetService("TweenService")
@@ -726,29 +737,30 @@ local function createElectroTeleportToggle(targetPage)
                     tweenObject = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPosition)})
                     tweenObject:Play()
 
-                    -- เมื่อบินถึงเป้าหมายแล้ว ให้ปิดสวิตช์อัตโนมัติ
+                    -- เมื่อบินถึงพิกัดเป้าหมายแล้ว ให้เริ่มรัวรีโมทซื้อทันที
                     tweenObject.Completed:Connect(function(status)
-                        if status == Enum.PlaybackState.Completed then
-                            toggled = false
-                            SettingsData.ElectroTeleport = false
-                            SaveConfig()
-                            btn.Text = "⚡ วาร์ปไปซื้อหมัดสายฟ้า [ OFF ]"
-                            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
-                            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+                        if status == Enum.PlaybackState.Completed and toggled then
+                            -- เริ่มลูปยิงรีโมทซื้อหมัดสายฟ้าซ้ำๆ จนกว่าจะได้ (เผื่อเงินไม่พอหรือจังหวะแลค)
+                            buyConnection = task.spawn(function()
+                                local replicatedStorage = game:GetService("ReplicatedStorage")
+                                while toggled do
+                                    pcall(function()
+                                        -- ยิงรีโมทซื้อหมัด Electro ของ Blox Fruits
+                                        replicatedStorage.Remotes.CommF_:InvokeServer("BuyElectro")
+                                    end)
+                                    task.wait(1) -- ส่งซ้ำทุกๆ 1 วินาที
+                                end
+                            end)
                         end
                     end)
                 end
             end)
         else
-            -- ถ้ากดปิด ให้หยุดการบินทันที
-            if tweenObject then
-                tweenObject:Cancel()
-                tweenObject = nil
-            end
+            stopElectroTask()
         end
     end
 
-    -- ถ้าเปิดค้างไว้จากรอบก่อนหน้าตอนรันสคริปต์
+    -- ถ้าเปิดค้างไว้ตั้งแต่รันสคริปต์
     if toggled then
         runTween(true)
     end
@@ -759,12 +771,12 @@ local function createElectroTeleportToggle(targetPage)
         SaveConfig()
 
         if toggled then
-            btn.Text = "⚡ วาร์ปไปซื้อหมัดสายฟ้า [ ON ]"
+            btn.Text = "⚡ ซื้อหมัดสายฟ้าออโต้ [ ON ]"
             btn.TextColor3 = Color3.fromRGB(100, 255, 100)
             btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
             runTween(true)
         else
-            btn.Text = "⚡ วาร์ปไปซื้อหมัดสายฟ้า [ OFF ]"
+            btn.Text = "⚡ ซื้อหมัดสายฟ้าออโต้ [ OFF ]"
             btn.TextColor3 = Color3.fromRGB(255, 100, 100)
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
             runTween(false)
@@ -774,4 +786,3 @@ end
 
 -- 📌 คำสั่งเรียกใช้งาน (นำไปไว้ในหมวดหมู่ "ร้านค้า" หรือ pShop)
 createElectroTeleportToggle(pShop)
-
