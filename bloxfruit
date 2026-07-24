@@ -215,16 +215,14 @@ createSidebarButton("ตั้งค่า", pSettings)
 
 
 
--- ==========================================
--- 🍎 ฟังก์ชันเพิ่มปุ่ม "ผลมังกรถาวร" ไว้ในหน้า "ผลไม้" (pFruit)
--- ==========================================
-local function createFruitButton(fruitName, displayName, targetPage)
+-- 2. ฟังก์ชันสร้างปุ่มกดสุ่มผลไม้ (ครั้งต่อครั้ง)
+local function createGachaButton(targetPage)
     local btn = Instance.new("TextButton")
     btn.Parent = targetPage
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 120, 60)
     btn.Size = UDim2.new(1, -10, 0, 38)
-    btn.Font = Enum.Font.GothamSemibold
-    btn.Text = "🍎 กดใช้ผลถาวร: " .. displayName
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = "🎲 สุ่มผลไม้ (1 ครั้ง / กดคลิก)"
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextSize = 13
 
@@ -233,13 +231,14 @@ local function createFruitButton(fruitName, displayName, targetPage)
     corner.Parent = btn
 
     btn.MouseButton1Click:Connect(function()
+        -- รีโมทหลักสำหรับการสุ่มผลไม้ใน Blox Fruits (Cousin / BloxFruitDealer)
         local args = {
-            [1] = "ChangeFruit",
-            [2] = fruitName
+            [1] = "Cousin",
+            [2] = "Buy"
         }
         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
     end)
 end
 
--- ใส่ปุ่มกดผลมังกรไว้ในหน้า "ผลไม้"
-createFruitButton("Dragon", "มังกร (Dragon)", pFruit)
+-- นำปุ่มทั้งหมดใส่ไว้ในหน้า "ผลไม้" (pFruit)
+createGachaButton(pFruit)                  -- ปุ่มสุ่มผลไม้ทีละครั้ง
