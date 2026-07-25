@@ -1069,25 +1069,17 @@ end
 -- สร้างหัวข้อหัวข้อหลัก
 createPureTextHeader(pSeaEvent, "ปรับแต่งการมองเห็น")
 
+
 -- ==========================================
--- 🌫️ ฟังก์ชันระบบลบหมอก / ปรับสว่างทะเล (เปิด-ปิดได้)
+-- 🌫️ ฟังก์ชันลบหมอก + ล็อกเวลาสว่างถาวร (แก้ปัญหาโดนดีดกลับ)
 -- ==========================================
 local function createRemoveFogToggle(targetPage)
-    -- สร้างตัวแปรเก็บสถานะ (ถ้ายังไม่มีใน SettingsData)
     SettingsData.RemoveFog = SettingsData.RemoveFog or false
     local toggled = SettingsData.RemoveFog
     local lighting = game:GetService("Lighting")
-    
-    -- ตัวแปรเก็บค่าเดิมของ Lighting ไว้ตอนปิดใช้งาน
-    local originalValues = {
-        Brightness = lighting.Brightness,
-        ClockTime = lighting.ClockTime,
-        FogEnd = lighting.FogEnd,
-        GlobalShadows = lighting.GlobalShadows,
-        OutdoorAmbient = lighting.OutdoorAmbient
-    }
+    local runService = game:GetService("RunService")
+    local lockConnection = nil
 
-    -- สร้างปุ่มเปิด/ปิดใน UI
     local btn = Instance.new("TextButton")
     btn.Parent = targetPage
     btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
@@ -1101,48 +1093,44 @@ local function createRemoveFogToggle(targetPage)
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    -- ฟังก์ชันการทำงานเปิด/ปิดลบหมอก
     local function applyRemoveFog(state)
         if state then
-            pcall(function()
-                lighting.Brightness = 2
-                lighting.ClockTime = 14 -- ตั้งเวลาเป็นเที่ยงวัน แดดจ้า
-                lighting.FogEnd = 100000 -- ดันระยะหมอกออกไปไกลสุดขีด
-                lighting.GlobalShadows = false -- ปิดเงาเพื่อความเคลียร์
-                lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+            -- เริ่มต้นระบบล็อกเวลาและเคลียร์หมอกแบบเรียลไทม์ทุกเฟรม
+            lockConnection = runService.Heartbeat:Connect(function()
+                pcall(function()
+                    lighting.Brightness = 2
+                    lighting.ClockTime = 14 -- ล็อกเวลาไว้ที่บ่ายสอง (แดดจ้าสุดๆ)
+                    lighting.FogEnd = 100000 -- ดันระยะหมอกออกไปไกล
+                    lighting.GlobalShadows = false -- ปิดเงา
+                    lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
 
-                -- ลบ Atmosphere หรือเอฟเฟกต์หมอกหนาของแมพออกชั่วคราว
-                for _, v in ipairs(lighting:GetChildren()) do
-                    if v:IsA("Atmosphere") then
-                        v.Parent = nil
+                    -- ซ่อน Atmosphere ดักไว้ไม่ให้เกมเปิดหมอกกลับมา
+                    for _, v in ipairs(lighting:GetChildren()) do
+                        if v:IsA("Atmosphere") then
+                            v.Parent = nil
+                        end
                     end
-                end
+                end)
             end)
         else
+            -- ปิดการทำงานและยกเลิกลูป
+            if lockConnection then
+                lockConnection:Disconnect()
+                lockConnection = nil
+            end
             pcall(function()
-                -- คืนค่าเดิมเมื่อปิด
-                lighting.Brightness = originalValues.Brightness
-                lighting.ClockTime = originalValues.ClockTime
-                lighting.FogEnd = originalValues.FogEnd
-                lighting.GlobalShadows = originalValues.GlobalShadows
-                lighting.OutdoorAmbient = originalValues.OutdoorAmbient
-
-                -- คืนค่า Atmosphere กลับมา
-                for _, v in ipairs(lighting:GetChildren()) do
-                    if v:IsA("Atmosphere") then
-                        v.Parent = lighting
-                    end
-                end
+                lighting.Brightness = 1
+                lighting.ClockTime = 12
+                lighting.FogEnd = 10000
+                lighting.GlobalShadows = true
             end)
         end
     end
 
-    -- ถ้าระบบเปิดค้างไว้ตอนรัน
     if toggled then
         applyRemoveFog(true)
     end
 
-    -- เมื่อกดปุ่ม
     btn.MouseButton1Click:Connect(function()
         toggled = not toggled
         SettingsData.RemoveFog = toggled
@@ -1162,7 +1150,4 @@ local function createRemoveFogToggle(targetPage)
     end)
 end
 
--- 📌 คำสั่งเรียกใช้งานในหน้าอีเวนต์ทะเล (pSeaEvent)
 createRemoveFogToggle(pSeaEvent)
-
-
