@@ -9,9 +9,9 @@ getgenv().MyScriptSettings = getgenv().MyScriptSettings or {
     PullFruit = false,     
     FastAttack = false,
     ElectoV1 = false,
-    RedstadV1 = false,
 CombatFish = false,
-FruitEsp = false,      
+FruitEsp = false,   
+BuyDarkStepToggl = false,
 }
 
 local SettingsData = getgenv().MyScriptSettings
@@ -1051,6 +1051,113 @@ end
 createPureTextHeader(pShop, "หมัด V1")
 
 
+
+-- ==========================================
+-- ✈️ ฟังก์ชันปุ่มเปิด-ปิด บินนิ่งความเร็ว 150 ไปซื้อขาดำ
+-- ==========================================
+local function createBuyDarkStepToggle(targetPage)
+    -- สร้างตัวแปรเก็บสถานะเปิด/ปิด
+    SettingsData.BuyDarkStep = SettingsData.BuyDarkStep or false
+    local toggled = SettingsData.BuyDarkStep
+    local activeConnection = nil
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = targetPage
+    btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = "🦵 ออโต้บินไปซื้อขาดำ (ความเร็ว 150) [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 13
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    local function runDarkStepTask(state)
+        if state then
+            activeConnection = task.spawn(function()
+                pcall(function()
+                    local player = game:GetService("Players").LocalPlayer
+                    local character = player.Character
+                    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+                    local hrp = character.HumanoidRootPart
+                    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+                    -- พิกัดเป้าหมาย (ปรับแก้ CFrame ตามจุด NPC ขาดำจริงในเกม)
+                    local targetCFrame = CFrame.new(-655, 11, 4048) 
+
+                    if humanoid then
+                        humanoid.PlatformStand = true
+                    end
+
+                    -- คำนวณระยะทางและเวลาที่ความเร็ว 150 Studs/s แบบนิ่งๆ สมูทไม่กระชาก
+                    local distance = (hrp.Position - targetCFrame.Position).Magnitude
+                    local speed = 150
+                    local timeTaken = distance / speed
+
+                    local tweenService = game:GetService("TweenService")
+                    local tweenInfo = TweenInfo.new(timeTaken, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+                    local tween = tweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
+                    
+                    tween:Play()
+                    tween.Completed:Wait()
+
+                    if humanoid then
+                        humanoid.PlatformStand = false
+                    end
+
+                    -- สั่งยิงรีโมทซื้อ "Dark Step"
+                    local replicatedStorage = game:GetService("ReplicatedStorage")
+                    local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
+                    
+                    if commF then
+                        commF:InvokeServer("BuyDarkStep")
+                    end
+                end)
+            end)
+        else
+            if activeConnection then
+                task.cancel(activeConnection)
+                activeConnection = nil
+            end
+        end
+    end
+
+    -- ถ้าระบบเปิดค้างไว้ตอนรัน
+    if toggled then
+        runDarkStepTask(true)
+    end
+
+    -- กดปุ่มเพื่อเปิด/ปิด
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        SettingsData.BuyDarkStep = toggled
+        if SaveConfig then SaveConfig() end
+
+        if toggled then
+            btn.Text = "🦵 ออโต้บินไปซื้อขาดำ (ความเร็ว 150) [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+            runDarkStepTask(true)
+        else
+            btn.Text = "🦵 ออโต้บินไปซื้อขาดำ (ความเร็ว 150) [ OFF ]"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            runDarkStepTask(false)
+        end
+    end)
+end
+
+-- 📌 คำสั่งเรียกใช้งานในหน้าร้านค้า (pShop)
+createBuyDarkStepToggle(pShop)
+
+
+
+
+
+
+
 -- ==========================================
 -- 🏷️ หัวข้อข้อความ "ปรับแต่งการมองเห็น" ในหน้าอีเวนต์ทะเล
 -- ==========================================
@@ -1068,6 +1175,10 @@ end
 
 -- สร้างหัวข้อหัวข้อหลัก
 createPureTextHeader(pSeaEvent, "ปรับแต่งการมองเห็น")
+
+
+
+
 
 
 -- ==========================================
