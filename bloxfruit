@@ -1049,3 +1049,120 @@ end
 
 -- 📌 เรียกใช้งานหัวข้อ "หมัด V1" ในหน้า "ร้านค้า" (pShop)
 createPureTextHeader(pShop, "หมัด V1")
+
+
+-- ==========================================
+-- 🏷️ หัวข้อข้อความ "ปรับแต่งการมองเห็น" ในหน้าอีเวนต์ทะเล
+-- ==========================================
+local function createPureTextHeader(targetPage, titleText)
+    local headerLabel = Instance.new("TextLabel")
+    headerLabel.Parent = targetPage
+    headerLabel.BackgroundTransparency = 1 -- โปร่งใส ไม่มีกรอบ
+    headerLabel.Size = UDim2.new(1, -10, 0, 35)
+    headerLabel.Font = Enum.Font.GothamBlack -- ฟอนต์หนาพิเศษ
+    headerLabel.Text = titleText
+    headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- สีขาว
+    headerLabel.TextSize = 16 -- ขนาดตัวหนังสือใหญ่
+    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+end
+
+-- สร้างหัวข้อหัวข้อหลัก
+createPureTextHeader(pSeaEvent, "ปรับแต่งการมองเห็น")
+
+-- ==========================================
+-- 🌫️ ฟังก์ชันระบบลบหมอก / ปรับสว่างทะเล (เปิด-ปิดได้)
+-- ==========================================
+local function createRemoveFogToggle(targetPage)
+    -- สร้างตัวแปรเก็บสถานะ (ถ้ายังไม่มีใน SettingsData)
+    SettingsData.RemoveFog = SettingsData.RemoveFog or false
+    local toggled = SettingsData.RemoveFog
+    local lighting = game:GetService("Lighting")
+    
+    -- ตัวแปรเก็บค่าเดิมของ Lighting ไว้ตอนปิดใช้งาน
+    local originalValues = {
+        Brightness = lighting.Brightness,
+        ClockTime = lighting.ClockTime,
+        FogEnd = lighting.FogEnd,
+        GlobalShadows = lighting.GlobalShadows,
+        OutdoorAmbient = lighting.OutdoorAmbient
+    }
+
+    -- สร้างปุ่มเปิด/ปิดใน UI
+    local btn = Instance.new("TextButton")
+    btn.Parent = targetPage
+    btn.BackgroundColor3 = toggled and Color3.fromRGB(40, 90, 40) or Color3.fromRGB(60, 60, 60)
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = "🌫️ ลบหมอก / ทะเลสว่าง [ " .. (toggled and "ON" or "OFF") .. " ]"
+    btn.TextColor3 = toggled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 13
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    -- ฟังก์ชันการทำงานเปิด/ปิดลบหมอก
+    local function applyRemoveFog(state)
+        if state then
+            pcall(function()
+                lighting.Brightness = 2
+                lighting.ClockTime = 14 -- ตั้งเวลาเป็นเที่ยงวัน แดดจ้า
+                lighting.FogEnd = 100000 -- ดันระยะหมอกออกไปไกลสุดขีด
+                lighting.GlobalShadows = false -- ปิดเงาเพื่อความเคลียร์
+                lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+
+                -- ลบ Atmosphere หรือเอฟเฟกต์หมอกหนาของแมพออกชั่วคราว
+                for _, v in ipairs(lighting:GetChildren()) do
+                    if v:IsA("Atmosphere") then
+                        v.Parent = nil
+                    end
+                end
+            end)
+        else
+            pcall(function()
+                -- คืนค่าเดิมเมื่อปิด
+                lighting.Brightness = originalValues.Brightness
+                lighting.ClockTime = originalValues.ClockTime
+                lighting.FogEnd = originalValues.FogEnd
+                lighting.GlobalShadows = originalValues.GlobalShadows
+                lighting.OutdoorAmbient = originalValues.OutdoorAmbient
+
+                -- คืนค่า Atmosphere กลับมา
+                for _, v in ipairs(lighting:GetChildren()) do
+                    if v:IsA("Atmosphere") then
+                        v.Parent = lighting
+                    end
+                end
+            end)
+        end
+    end
+
+    -- ถ้าระบบเปิดค้างไว้ตอนรัน
+    if toggled then
+        applyRemoveFog(true)
+    end
+
+    -- เมื่อกดปุ่ม
+    btn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        SettingsData.RemoveFog = toggled
+        if SaveConfig then SaveConfig() end
+
+        if toggled then
+            btn.Text = "🌫️ ลบหมอก / ทะเลสว่าง [ ON ]"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+            applyRemoveFog(true)
+        else
+            btn.Text = "🌫️ ลบหมอก / ทะเลสว่าง [ OFF ]"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            applyRemoveFog(false)
+        end
+    end)
+end
+
+-- 📌 คำสั่งเรียกใช้งานในหน้าอีเวนต์ทะเล (pSeaEvent)
+createRemoveFogToggle(pSeaEvent)
+
+
