@@ -1139,7 +1139,7 @@ createPureTextHeader(pShop, "หมัด V1")
 
 
 -- ==========================================
--- ✈️ ฟังก์ชันออโต้บินไปซื้อขาดำ (แบบพุ่งตรงแม่นยำ ไม่ค้างกลางทาง)
+-- ✈️ ฟังก์ชันออโต้บินไปซื้อขาดำ (บินขึ้นฟ้าข้ามน้ำ ป้องกันตกน้ำ 100%)
 -- ==========================================
 local function createBuyDarkStepToggle(targetPage)
     SettingsData.BuyDarkStep = SettingsData.BuyDarkStep or false
@@ -1169,28 +1169,38 @@ local function createBuyDarkStepToggle(targetPage)
                     local hrp = character.HumanoidRootPart
                     local humanoid = character:FindFirstChildOfClass("Humanoid")
 
-                    -- 📌 พิกัดเป้าหมายที่ต้องการไป
-                    local targetPosition = Vector3.new(103.85, 12.07, 1782.15)
-                    local targetCFrame = CFrame.new(targetPosition)
+                    -- 📌 พิกัดเป้าหมายจริง (จุด NPC ขาดำ)
+                    local finalLandingPosition = Vector3.new(103.85, 12.07, 1782.15)
+                    
+                    -- 📌 จุดบินขึ้นฟ้ากลางอากาศ (ความสูง Y = 300 เพื่อลอยข้ามเกาะและทะเลทั้งหมด)
+                    local flyHighPosition = Vector3.new(103.85, 300, 1782.15)
 
                     if humanoid then
-                        humanoid.PlatformStand = true -- ล็อกตัวละครให้นิ่งขณะบิน
+                        humanoid.PlatformStand = true -- ล็อกตัวละครให้นิ่ง
                     end
 
-                    -- คำนวณระยะทางเพื่อให้ความเร็วคงที่ที่ 150 Studs/s เป๊ะๆ
-                    local distance = (hrp.Position - targetPosition).Magnitude
-                    local speed = 150
-                    local timeTaken = distance / speed
-
                     local tweenService = game:GetService("TweenService")
-                    local tweenInfo = TweenInfo.new(timeTaken, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-                    
-                    -- สร้าง Tween บินพุ่งตรงไปยังเป้าหมาย
-                    local tween = tweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
-                    tween:Play()
+                    local speed = 150
 
-                    -- รอจนกว่าจะบินไปถึงเป้าหมายจริง
-                    tween.Completed:Wait()
+                    -- สเต็ป 1: พุ่งขึ้นฟ้าตรงจุดปัจจุบันก่อน (ความสูง 300) เพื่อไม่ให้ติดสิ่งกีดขวางหรือพื้นน้ำ
+                    local currentPos = hrp.Position
+                    local safeUpPosition = Vector3.new(currentPos.X, 300, currentPos.Z)
+                    local distUp = (hrp.Position - safeUpPosition).Magnitude
+                    local tweenUp = tweenService:Create(hrp, TweenInfo.new(distUp / speed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(safeUpPosition)})
+                    tweenUp:Play()
+                    tweenUp.Completed:Wait()
+
+                    -- สเต็ป 2: บินลอยฟ้าข้ามไปยังพิกัดเป้าหมายในแนวตรง (อยู่เหนือเกาะพอดี)
+                    local distAcross = (hrp.Position - flyHighPosition).Magnitude
+                    local tweenAcross = tweenService:Create(hrp, TweenInfo.new(distAcross / speed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(flyHighPosition)})
+                    tweenAcross:Play()
+                    tweenAcross.Completed:Wait()
+
+                    -- สเต็ป 3: ทิ้งตัวดิ่งลงมาที่ NPC ขาดำอย่างแม่นยำ
+                    local distDown = (hrp.Position - finalLandingPosition).Magnitude
+                    local tweenDown = tweenService:Create(hrp, TweenInfo.new(distDown / 100, Enum.EasingStyle.Linear), {CFrame = CFrame.new(finalLandingPosition)})
+                    tweenDown:Play()
+                    tweenDown.Completed:Wait()
 
                     if humanoid then
                         humanoid.PlatformStand = false -- คืนค่าตัวละครปกติ
@@ -1246,8 +1256,6 @@ local function createBuyDarkStepToggle(targetPage)
 end
 
 createBuyDarkStepToggle(pShop)
-
-
 
 
 
