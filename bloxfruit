@@ -1160,3 +1160,211 @@ local function createRemoveFogToggle(targetPage)
 end
 
 createRemoveFogToggle(pSeaEvent)
+
+
+
+
+-- ==========================================
+-- 🖥️ ระบบหน้าหลักแสดงสถานะตัวละครและข้อมูลในเซิร์ฟเวอร์
+-- ==========================================
+local function createMainStatusDashboard(mainPage)
+    local Players = game:GetService("Players")
+    local localPlayer = Players.LocalPlayer
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+    -- 1. สร้างกรอบหลักสำหรับแสดงข้อมูล
+    local mainFrame = Instance.new("ScrollingFrame")
+    mainFrame.Parent = mainPage
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.Size = UDim2.new(1, 0, 1, 0)
+    mainFrame.CanvasSize = UDim2.new(0, 0, 0, 420)
+    mainFrame.ScrollBarThickness = 4
+
+    local uiLayout = Instance.new("UIListLayout")
+    uiLayout.Parent = mainFrame
+    uiLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    uiLayout.Padding = UDim.new(0, 8)
+
+    -- ฟังก์ชันสำหรับสร้างแถวข้อความแสดงข้อมูล
+    local function createInfoRow(labelText, defaultVal)
+        local rowFrame = Instance.new("Frame")
+        rowFrame.Parent = mainFrame
+        rowFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        rowFrame.Size = UDim2.new(1, -10, 0, 35)
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = rowFrame
+
+        local title = Instance.new("TextLabel")
+        title.Parent = rowFrame
+        title.BackgroundTransparency = 1
+        title.Position = UDim2.new(0, 10, 0, 0)
+        title.Size = UDim2.new(0.6, 0, 1, 0)
+        title.Font = Enum.Font.GothamBold
+        title.Text = labelText
+        title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        title.TextSize = 13
+        title.TextXAlignment = Enum.TextXAlignment.Left
+
+        local valLabel = Instance.new("TextLabel")
+        valLabel.Name = "ValueLabel"
+        valLabel.Parent = rowFrame
+        valLabel.BackgroundTransparency = 1
+        valLabel.Position = UDim2.new(0.6, 0, 0, 0)
+        valLabel.Size = UDim2.new(0.4, -10, 0, 1)
+        valLabel.Size = UDim2.new(0.4, -10, 1, 0)
+        valLabel.Font = Enum.Font.GothamBold
+        valLabel.Text = defaultVal
+        valLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        valLabel.TextSize = 13
+        valLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+        return valLabel
+    end
+
+    -- สร้างหัวข้อข้อมูลตามที่ต้องการ
+    local lblName = createInfoRow("📌 ชื่อตัวละคร:", localPlayer.Name)
+    local lblBossCount = createInfoRow("👹 ในเซิฟมีบอสกี่ตัว:", "กำลังคำนวณ...")
+    local lblMoon = createInfoRow("🌕 พระจันทร์ (0 - เต็มดวง):", "0/4")
+    local lblMirage = createInfoRow("🏝️ เกาะลับ (Mirage):", "ไม่เกิด")
+    local lblKitsune = createInfoRow("🦊 เกาะคิซุเนะ:", "ไม่เกิด")
+    local lblVolcano = createInfoRow("🌋 เกาะภูเขาไฟ (Prehistoric):", "ไม่เกิด")
+    local lblElite = createInfoRow("⚔️ อีลิตฮันเตอร์ที่ฆ่าไป:", "0 ตัว")
+
+    -- 2. สร้างแถวสำหรับปุ่มเปิด-ปิด ESP Boss แบบเล็ก
+    local espRow = Instance.new("Frame")
+    espRow.Parent = mainFrame
+    espRow.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    espRow.Size = UDim2.new(1, -10, 0, 35)
+
+    local espCorner = Instance.new("UICorner")
+    espCorner.CornerRadius = UDim.new(0, 6)
+    espCorner.Parent = espRow
+
+    local espTitle = Instance.new("TextLabel")
+    espTitle.Parent = espRow
+    espTitle.BackgroundTransparency = 1
+    espTitle.Position = UDim2.new(0, 10, 0, 0)
+    espTitle.Size = UDim2.new(0.7, 0, 1, 0)
+    espTitle.Font = Enum.Font.GothamBold
+    espTitle.Text = "👁️ ESP Boss (แสดงตำแหน่งบอส):"
+    espTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    espTitle.TextSize = 13
+    espTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- ปุ่มเปิด-ปิดขนาดเล็ก
+    local espToggleBtn = Instance.new("TextButton")
+    espToggleBtn.Parent = espRow
+    espToggleBtn.AnchorPoint = Vector2.new(1, 0.5)
+    espToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    espToggleBtn.Position = UDim2.new(1, -10, 0.5, 0)
+    espToggleBtn.Size = UDim2.new(0, 70, 0, 24)
+    espToggleBtn.Font = Enum.Font.GothamBold
+    espToggleBtn.Text = "OFF"
+    espToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    espToggleBtn.TextSize = 12
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = espToggleBtn
+
+    -- ตัวแปรสถานะ ESP
+    _G.EspBossEnabled = false
+    espToggleBtn.MouseButton1Click:Connect(function()
+        _G.EspBossEnabled = not _G.EspBossEnabled
+        if _G.EspBossEnabled then
+            espToggleBtn.Text = "ON"
+            espToggleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+            espToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 90, 40)
+        else
+            espToggleBtn.Text = "OFF"
+            espToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            espToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        end
+    end)
+
+    -- 3. ระบบอัปเดตข้อมูลแบบเรียลไทม์ (รันเบื้องหลังเพื่อดึงค่าในเกม Blox Fruits มาแสดง)
+    task.spawn(function()
+        while true do
+            pcall(function()
+                -- นับจำนวนบอสในเซิร์ฟเวอร์ (เช็คจากโฟลเดอร์ Enemies ที่มีชื่อเป็นบอส หรือเช็ค Humanoid ที่ไม่ใช่ผู้เล่น)
+                local bossCount = 0
+                local enemies = workspace:FindFirstChild("Enemies")
+                if enemies then
+                    for _, v in ipairs(enemies:GetChildren()) do
+                        local humanoid = v:FindFirstChildOfClass("Humanoid")
+                        local hrp = v:FindFirstChild("HumanoidRootPart")
+                        -- เงื่อนไขเช็คคร่าวๆ ว่าเป็นบอส (เลือดเยอะหรือเช็คตามชื่อในเกม)
+                        if humanoid and hrp and humanoid.Health > 0 then
+                            if v:FindFirstChild("Level") or (humanoid.MaxHealth > 5000) then
+                                bossCount = bossCount + 1
+                            end
+                        end
+                    end
+                end
+                lblBossCount.Text = tostring(bossCount) .. " ตัว"
+
+                -- เช็คดวงจันทร์ (Lighting ClockTime หรือ MoonPhase ของเกม)
+                local lighting = game:GetService("Lighting")
+                local clockTime = lighting.ClockTime
+                -- ตัวอย่างการคำนวณพระจันทร์ 0 ถึง 4 (เต็มดวง) จากเวลาในเกมหรือ Lighting
+                local moonPhaseText = "0/4 (มืด)"
+                if lighting:FindFirstChild("MoonPhase") then
+                    moonPhaseText = tostring(lighting.MoonPhase) .. "/4"
+                else
+                    -- เทียบจากเวลา (0-24 น.)
+                    if clockTime >= 0 and clockTime < 5 then moonPhaseText = "4/4 (เต็มดวง!🌕)"
+                    elseif clockTime >= 5 and clockTime < 12 then moonPhaseText = "0/4 (เช้า)"
+                    elseif clockTime >= 12 and clockTime < 18 then moonPhaseText = "1/4 (บ่าย)"
+                    else moonPhaseText = "2/4 (เริ่มมืด)" end
+                end
+                lblMoon.Text = moonPhaseText
+
+                commF = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CommF_")
+                
+                -- เช็คเกาะลับ (Mirage Island) ว่าเกิดไหม
+                local map = workspace:FindFirstChild("Map")
+                if map and map:FindFirstChild("MirageIsland") then
+                    lblMirage.Text = "เกิดแล้ว! 🏝️"
+                    lblMirage.TextColor3 = Color3.fromRGB(255, 215, 0)
+                else
+                    lblMirage.Text = "ไม่เกิด"
+                    lblMirage.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end
+
+                -- เช็คเกาะคิซุเนะ (Kitsune Island)
+                if map and (map:FindFirstChild("KitsuneIsland") or workspace:FindFirstChild("KitsuneCheck")) then
+                    lblKitsune.Text = "เกิดแล้ว! 🦊"
+                    lblKitsune.TextColor3 = Color3.fromRGB(255, 165, 0)
+                else
+                    lblKitsune.Text = "ไม่เกิด"
+                    lblKitsune.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end
+
+                -- เช็คเกาะภูเขาไฟ (Prehistoric Island)
+                if map and map:FindFirstChild("PrehistoricIsland") then
+                    lblVolcano.Text = "เกิดแล้ว! 🌋"
+                    lblVolcano.TextColor3 = Color3.fromRGB(255, 69, 0)
+                else
+                    lblVolcano.Text = "ไม่เกิด"
+                    lblVolcano.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end
+
+                -- ดึงข้อมูลจำนวนอีลิตฮันเตอร์ที่ผู้เล่นฆ่า (ผ่าน Leaderstats หรือ Data ของเกม)
+                if localPlayer:FindFirstChild("leaderstats") then
+                    local eliteStat = localPlayer.leaderstats:FindFirstChild("Elite") or localPlayer.leaderstats:FindFirstChild("EliteHunter")
+                    if eliteStat then
+                        lblElite.Text = tostring(eliteStat.Value) .. " ตัว"
+                    else
+                        lblElite.Text = "0 ตัว (ไม่พบ Stats)"
+                    end
+                end
+            end)
+            task.wait(2) -- อัปเดตข้อมูลทุกๆ 2 วินาที
+        end
+    end)
+end
+
+-- 📌 คำสั่งเรียกใช้งาน (ส่งตัวแปรหน้า Main ของคุณเข้าไป เช่น mainPage หรือ tab1)
+-- createMainStatusDashboard(mainPage)
