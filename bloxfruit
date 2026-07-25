@@ -72,7 +72,7 @@ task.spawn(function()
         local updateCheckUrl = "" -- ใส่ลิงก์ Raw GitHub ของคุณตรงนี้ (ถ้ามี) หรือปล่อยว่างใช้ระบบเช็คสถานะเซิร์ฟเวอร์
 
         while true do
-            task.wait(10) -- เช็คทุกๆ 10 หรือ 30 วินาที เพื่อไม่ให้กินทรัพยากรเครื่อง
+            task.wait(3) -- เช็คทุกๆ 10 หรือ 30 วินาที เพื่อไม่ให้กินทรัพยากรเครื่อง
             
             local hasUpdated = false
 
