@@ -1053,10 +1053,9 @@ createPureTextHeader(pShop, "หมัด V1")
 
 
 -- ==========================================
--- ✈️ ฟังก์ชันปุ่มเปิด-ปิด บินนิ่งความเร็ว 150 ไปซื้อขาดำ
+-- ✈️ ฟังก์ชันออโต้บินนิ่งๆ ความเร็ว 150 (พิกัดใหม่สมูทไม่กระชาก)
 -- ==========================================
 local function createBuyDarkStepToggle(targetPage)
-    -- สร้างตัวแปรเก็บสถานะเปิด/ปิด
     SettingsData.BuyDarkStep = SettingsData.BuyDarkStep or false
     local toggled = SettingsData.BuyDarkStep
     local activeConnection = nil
@@ -1084,35 +1083,63 @@ local function createBuyDarkStepToggle(targetPage)
                     local hrp = character.HumanoidRootPart
                     local humanoid = character:FindFirstChildOfClass("Humanoid")
 
-                    -- พิกัดเป้าหมาย (ปรับแก้ CFrame ตามจุด NPC ขาดำจริงในเกม)
-                    local targetCFrame = CFrame.new(-655, 11, 4048) 
+                    -- 📌 พิกัดใหม่ที่คุณต้องการ (สามารถปรับเปลี่ยนตัวเลข Vector3 ตรงนี้ได้ครับ)
+                    local targetPosition = Vector3.new(103.85, 12.07, 1782.15) 
 
                     if humanoid then
                         humanoid.PlatformStand = true
                     end
 
-                    -- คำนวณระยะทางและเวลาที่ความเร็ว 150 Studs/s แบบนิ่งๆ สมูทไม่กระชาก
-                    local distance = (hrp.Position - targetCFrame.Position).Magnitude
-                    local speed = 150
-                    local timeTaken = distance / speed
+                    -- สร้าง Attachment และ LinearVelocity เพื่อบังคับความเร็วคงที่ 150 แบบนิ่งสนิท
+                    local attachment = Instance.new("Attachment", hrp)
+                    local linearVelocity = Instance.new("LinearVelocity", hrp)
+                    linearVelocity.Attachment0 = attachment
+                    linearVelocity.MaxForce = math.huge
+                    linearVelocity.VectorVelocity = Vector3.new(0, 0, 0)
 
-                    local tweenService = game:GetService("TweenService")
-                    local tweenInfo = TweenInfo.new(timeTaken, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-                    local tween = tweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
-                    
-                    tween:Play()
-                    tween.Completed:Wait()
+                    -- สร้าง BodyVelocity หรือปิดแรงโน้มถ่วงไม่ให้ร่วง
+                    local bodyVelocity = Instance.new("BodyVelocity", hrp)
+                    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+
+                    while toggled do
+                        local currentPos = hrp.Position
+                        local direction = (targetPosition - currentPos)
+                        local distance = direction.Magnitude
+
+                        if distance < 5 then
+                            -- ไปถึงเป้าหมายแล้ว หยุดเคลื่อนที่
+                            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                            break
+                        end
+
+                        -- คำนวณความเร็วคงที่ 150 Studs/s พุ่งตรงเป๊ะแบบไม่กระชาก
+                        local speed = 150
+                        bodyVelocity.Velocity = direction.Unit * speed
+                        
+                        -- หันหน้าไปทางเป้าหมายแบบสมูท
+                        hrp.CFrame = CFrame.new(currentPos, targetPosition)
+
+                        task.wait()
+                    end
+
+                    --เคลียร์ระบบฟิสิกส์เมื่อถึงที่หมาย
+                    if bodyVelocity then bodyVelocity:Destroy() end
+                    if linearVelocity then linearVelocity:Destroy() end
+                    if attachment then attachment:Destroy() end
 
                     if humanoid then
                         humanoid.PlatformStand = false
                     end
 
-                    -- สั่งยิงรีโมทซื้อ "Dark Step"
-                    local replicatedStorage = game:GetService("ReplicatedStorage")
-                    local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
-                    
-                    if commF then
-                        commF:InvokeServer("BuyDarkStep")
+                    -- สั่งยิงรีโมทซื้อ "Dark Step" ทันทีเมื่อถึง
+                    if toggled then
+                        local replicatedStorage = game:GetService("ReplicatedStorage")
+                        local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
+                        
+                        if commF then
+                            commF:InvokeServer("BuyDarkStep")
+                        end
                     end
                 end)
             end)
@@ -1121,15 +1148,25 @@ local function createBuyDarkStepToggle(targetPage)
                 task.cancel(activeConnection)
                 activeConnection = nil
             end
+            pcall(function()
+                local character = game:GetService("Players").LocalPlayer.Character
+                if character then
+                    local humanoid = character:FindFirstChildOfClass("Humanoid")
+                    if humanoid then humanoid.PlatformStand = false end
+                    for _, v in ipairs(character:FindFirstChild("HumanoidRootPart"):GetChildren()) do
+                        if v:IsA("BodyVelocity") or v:IsA("LinearVelocity") or v:IsA("Attachment") then
+                            v:Destroy()
+                        end
+                    end
+                end
+            end)
         end
     end
 
-    -- ถ้าระบบเปิดค้างไว้ตอนรัน
     if toggled then
         runDarkStepTask(true)
     end
 
-    -- กดปุ่มเพื่อเปิด/ปิด
     btn.MouseButton1Click:Connect(function()
         toggled = not toggled
         SettingsData.BuyDarkStep = toggled
@@ -1149,10 +1186,7 @@ local function createBuyDarkStepToggle(targetPage)
     end)
 end
 
--- 📌 คำสั่งเรียกใช้งานในหน้าร้านค้า (pShop)
 createBuyDarkStepToggle(pShop)
-
-
 
 
 
