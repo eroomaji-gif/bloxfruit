@@ -74,7 +74,7 @@ task.spawn(function()
         while true do
             task.wait(10) -- เช็คทุกๆ 10 หรือ 30 วินาที เพื่อไม่ให้กินทรัพยากรเครื่อง
             
-            local hasUpdated = true
+            local hasUpdated = false
 
             if updateCheckUrl ~= "" then
                 local success, latestCode = pcall(function()
