@@ -1026,3 +1026,26 @@ end
 
 -- 📌 คำสั่งเรียกใช้งาน (เปลี่ยน pFruit เป็นหน้าต่างของคุณ)
 createFastAttackToggle(pSettings)
+
+
+
+
+
+
+-- ==========================================
+-- 🏷️ หัวข้อข้อความล้วน (ไม่มีกรอบหลัง ตัวหนังสือขาวใหญ่หนา)
+-- ==========================================
+local function createPureTextHeader(targetPage, titleText)
+    local headerLabel = Instance.new("TextLabel")
+    headerLabel.Parent = targetPage
+    headerLabel.BackgroundTransparency = 1 -- 🟢 ปรับพื้นหลังให้โปร่งใส (ไม่มีกรอบ)
+    headerLabel.Size = UDim2.new(1, -10, 0, 35)
+    headerLabel.Font = Enum.Font.GothamBlack -- ฟอนต์หนาพิเศษ
+    headerLabel.Text = titleText
+    headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- สีขาว
+    headerLabel.TextSize = 16 -- ขนาดตัวหนังสือใหญ่ขึ้น
+    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+end
+
+-- 📌 เรียกใช้งานหัวข้อ "หมัด V1" ในหน้า "ร้านค้า" (pShop)
+createPureTextHeader(pShop, "หมัด V1")
